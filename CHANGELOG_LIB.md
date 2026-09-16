@@ -41,7 +41,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - `RawEncoder::flush` flushes the compression context into an output buffer without ending the
-  frame
+  frame. A frame ending that `RawEncoder::end_frame` left pending is finished instead
 
 The `Error` struct has changed:
 

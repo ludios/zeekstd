@@ -1,4 +1,5 @@
 // Model-output: Claude Fable 5.1
+// Model-output: Claude Opus 5
 #[cfg(feature = "std")]
 use alloc::vec::Vec;
 use zstd_safe::{
@@ -269,6 +270,9 @@ impl<'a> EncodeOptions<'a> {
 pub struct RawEncoder<'a> {
     cctx: CCtx<'a>,
     frame_policy: FrameSizePolicy,
+    /// Whether a frame ending was started but could not be written completely yet. Zstd has to
+    /// finish it before anything else may happen to the frame.
+    frame_ending: bool,
     frame_c_size: u32,
     frame_d_size: u32,
     seek_table: SeekTable,
@@ -294,6 +298,7 @@ impl<'a> RawEncoder<'a> {
         Ok(Self {
             cctx: opts.cctx,
             frame_policy: opts.frame_policy,
+            frame_ending: false,
             frame_c_size: 0,
             frame_d_size: 0,
             seek_table: SeekTable::new(),
@@ -467,6 +472,7 @@ impl RawEncoder<'_> {
 
             if out_buf.pos() == out_buf.capacity() {
                 // Indicate that more buffer space is required
+                self.frame_ending = true;
                 return Ok(EpilogueProgress::new(out_buf.pos(), n));
             }
         }
@@ -487,10 +493,26 @@ impl RawEncoder<'_> {
     /// costs a little compression ratio, so it is meant for callers that need what they have
     /// written so far to reach the output now.
     ///
+    /// Writes nothing for a frame that consumed no input. A frame ending left pending by
+    /// [`Self::end_frame`] running out of output space is finished instead, which logs the frame
+    /// in the seek table and starts a new one.
+    ///
     /// # Errors
     ///
     /// If flushing fails.
     pub fn flush(&mut self, output: &mut [u8]) -> Result<EpilogueProgress> {
+        // A frame ending that is under way has to be finished: zstd would otherwise leave the
+        // frame unterminated, and the seek table would never learn about it.
+        if self.frame_ending {
+            return self.end_frame(output);
+        }
+
+        // Nothing was fed into this frame, so nothing is buffered: leave the compression session
+        // untouched, so that a prefix can still be referenced for the frame about to start.
+        if self.frame_d_size == 0 {
+            return Ok(EpilogueProgress::new(0, 0));
+        }
+
         let mut empty_buf = InBuffer::around(&[]);
         let mut out_buf = OutBuffer::around(output);
 
@@ -537,6 +559,7 @@ impl RawEncoder<'_> {
     /// compression session.
     #[allow(clippy::missing_panics_doc)]
     pub fn reset_frame(&mut self) {
+        self.frame_ending = false;
         self.frame_c_size = 0;
         self.frame_d_size = 0;
         self.cctx
@@ -883,8 +906,9 @@ impl<W: std::io::Write> std::io::Write for Encoder<'_, W> {
         Ok(self.compress(buf)?)
     }
 
-    /// Delivers everything written so far to the writer and flushes it, without ending the
-    /// current frame.
+    /// Delivers everything written so far to the writer and flushes it. This does not end the
+    /// current frame, unless a frame ending was already under way because an earlier call failed
+    /// partway, in which case that ending is completed first.
     fn flush(&mut self) -> std::io::Result<()> {
         self.drain_cctx()?;
         self.flush_out_buf(true)?;
@@ -897,6 +921,8 @@ mod tests {
     use alloc::vec;
 
     use crate::tests::INPUT;
+    #[cfg(feature = "std")]
+    use crate::{BytesWrapper, Decoder};
 
     use super::*;
 
@@ -1023,6 +1049,102 @@ mod tests {
         assert_eq!(&restored[..n], INPUT.repeat(2).as_bytes());
     }
 
+    /// 200 KiB of xorshift noise: incompressible, so an encoder's output buffer fills up and gets
+    /// written out in the middle of compression.
+    #[cfg(feature = "std")]
+    fn noise() -> Vec<u8> {
+        let mut state = 0x9E37_79B9_7F4A_7C15_u64;
+        (0..200 * 1024)
+            .map(|_| {
+                state ^= state << 13;
+                state ^= state >> 7;
+                state ^= state << 17;
+                state as u8
+            })
+            .collect()
+    }
+
+    /// A frame ending that an output buffer cut short must be finished by a following flush, not
+    /// bypassed: the frame would otherwise stay unlogged and merge with the next one.
+    #[test]
+    #[cfg(feature = "std")]
+    fn flush_finishes_a_pending_frame_ending() {
+        let input = noise();
+        let mut encoder = RawEncoder::new().unwrap();
+        let mut archive = vec![];
+        let mut buf = vec![0; 128 * 1024];
+
+        let mut consumed = 0;
+        while consumed < input.len() {
+            let progress = encoder.compress(&input[consumed..], &mut buf).unwrap();
+            archive.extend(&buf[..progress.out_progress()]);
+            consumed += progress.in_progress();
+        }
+
+        // Start the frame ending in a buffer too small to hold it
+        let mut tiny = [0u8; 4];
+        let progress = encoder.end_frame(&mut tiny).unwrap();
+        archive.extend(&tiny[..progress.out_progress()]);
+        assert!(
+            progress.data_left() > 0,
+            "the ending should still be pending"
+        );
+
+        loop {
+            let progress = encoder.flush(&mut buf).unwrap();
+            archive.extend(&buf[..progress.out_progress()]);
+            if progress.data_left() == 0 {
+                break;
+            }
+        }
+        assert_eq!(
+            encoder.seek_table().num_frames(),
+            1,
+            "the frame was not logged"
+        );
+
+        let mut ser = encoder.into_seek_table().into_serializer();
+        loop {
+            let n = ser.write_into(&mut buf);
+            if n == 0 {
+                break;
+            }
+            archive.extend(&buf[..n]);
+        }
+
+        let mut decoder = Decoder::new(BytesWrapper::new(&archive)).unwrap();
+        let mut restored = vec![0; input.len()];
+        let mut pos = 0;
+        loop {
+            let n = decoder.decompress(&mut restored[pos..]).unwrap();
+            if n == 0 {
+                break;
+            }
+            pos += n;
+        }
+        assert_eq!(restored[..pos], input[..]);
+    }
+
+    /// Flushing a frame that consumed nothing must leave the compression session untouched, so
+    /// that a prefix can still be referenced afterwards.
+    #[test]
+    #[cfg(feature = "std")]
+    fn flush_of_an_idle_frame_keeps_a_prefix_usable() {
+        use std::io::Write;
+
+        let mut out = vec![];
+        let mut encoder = Encoder::new(&mut out).unwrap();
+        encoder.flush().unwrap();
+        encoder
+            .compress_with_prefix(INPUT.as_bytes(), Some(INPUT.as_bytes()))
+            .expect("referencing a prefix after an idle flush");
+        encoder.end_frame().unwrap();
+        encoder.flush().unwrap();
+        encoder
+            .compress_with_prefix(INPUT.as_bytes(), Some(INPUT.as_bytes()))
+            .expect("referencing a prefix after a flush between frames");
+    }
+
     /// Round trips through writers that fail partway, retrying like a caller that still holds its
     /// data would.
     #[cfg(feature = "std")]
@@ -1031,8 +1153,6 @@ mod tests {
             io::{self, ErrorKind, Write},
             ops::Range,
         };
-
-        use crate::{BytesWrapper, Decoder};
 
         use super::*;
 
@@ -1061,20 +1181,6 @@ mod tests {
             fn flush(&mut self) -> io::Result<()> {
                 Ok(())
             }
-        }
-
-        /// 200 KiB of xorshift noise: incompressible, so the encoder's output buffer fills up and
-        /// gets written out in the middle of compression.
-        fn noise() -> Vec<u8> {
-            let mut state = 0x9E37_79B9_7F4A_7C15_u64;
-            (0..200 * 1024)
-                .map(|_| {
-                    state ^= state << 13;
-                    state ^= state >> 7;
-                    state ^= state << 17;
-                    state as u8
-                })
-                .collect()
         }
 
         /// Feeds `input` to `encoder` in 10 KiB slices, retrying a slice whenever the encoder
@@ -1151,6 +1257,52 @@ mod tests {
                     assert_eq!(total, writer.written.len() as u64);
                     assert_eq!(decompress_all(&writer.written), input);
                     Some((errors, writer.calls))
+                }
+            }
+        }
+
+        /// Compresses `noise()` through a writer whose calls in `failing_calls` fail with
+        /// `WouldBlock`, flushes once all input is in, and decodes the archive again. Frames end
+        /// every 40 KiB, so a failure can interrupt an automatic frame ending, which the flush has
+        /// to finish rather than bypass. Returns the decoded bytes and how many write calls the
+        /// writer saw, or `None` when the error landed in `finish`, which cannot be retried.
+        fn round_trip_with_flush(failing_calls: Range<usize>) -> Option<(Vec<u8>, usize)> {
+            let input = noise();
+            let mut writer = FlakyWriter {
+                written: vec![],
+                chunk: 30_000,
+                calls: 0,
+                failing_calls,
+                kind: ErrorKind::WouldBlock,
+            };
+            let mut encoder = EncodeOptions::new()
+                .frame_size_policy(FrameSizePolicy::Uncompressed(40_000))
+                .into_encoder(&mut writer)
+                .unwrap();
+            compress_with_retries(&mut encoder, &input);
+            flush_with_retries(&mut encoder, ErrorKind::WouldBlock);
+            match encoder.finish() {
+                Err(err) => {
+                    assert!(err.is_io());
+                    None
+                }
+                Ok(total) => {
+                    assert_eq!(total, writer.written.len() as u64);
+                    Some((decompress_all(&writer.written), writer.calls))
+                }
+            }
+        }
+
+        #[test]
+        fn write_errors_around_frame_endings_never_corrupt_the_archive() {
+            let input = noise();
+            let (_, calls) = round_trip_with_flush(0..0).unwrap();
+            for fail_at in 0..calls {
+                if let Some((output, _)) = round_trip_with_flush(fail_at..fail_at + 1) {
+                    assert_eq!(
+                        output, input,
+                        "wrong output after write call {fail_at} failed"
+                    );
                 }
             }
         }

@@ -1,4 +1,5 @@
 // Model-output: Claude Fable 5.1
+// Model-output: Claude Opus 5
 use alloc::vec;
 use alloc::vec::Vec;
 
@@ -327,9 +328,9 @@ impl Default for SeekTable {
 }
 
 impl From<Parser> for SeekTable {
-    fn from(mut value: Parser) -> Self {
-        // The entries grew by doubling while parsing, keep only what the table needs
-        value.entries.0.shrink_to_fit();
+    fn from(value: Parser) -> Self {
+        // The entries keep the capacity they grew to while parsing: shrinking can reallocate, and
+        // an infallible reallocation would give back the abort that parsing avoids
         SeekTable {
             entries: value.entries,
         }
