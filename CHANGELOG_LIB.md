@@ -16,6 +16,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   frame
 - `Decoder` returns an error when a frame's decompressed size differs from its seek table entry
   instead of silently truncating or misaligning the output
+- `Encoder` no longer corrupts the archive when a write to its writer fails partway and the caller
+  retries: bytes the writer accepted are not resent, input consumed before the failure is reported
+  as consumed instead of failing the call, and the error surfaces on the next call
+- `Decoder::decompress` reports the bytes it already placed in the output buffer when a later read
+  from the source fails, instead of dropping them; the error surfaces on the next call
+- The `Seekable` impl for `Read + Seek` sources retries reads that fail with
+  `ErrorKind::Interrupted`
 
 ### Added
 
@@ -24,6 +31,10 @@ The `Error` struct has changed:
 - The method `Error::is_invalid_frame_size_policy()` was added
 - The method `Error::is_unexpected_eof()` was added
 - The method `Error::is_frame_size_mismatch()` was added
+- `From<Error> for std::io::Error` was implemented. It hands back the original IO error, so that
+  callers can act on its kind, and reports an unexpected end of the source as
+  `ErrorKind::UnexpectedEof`. The `Write` impl of `Encoder` and the `Read` impl of `Decoder` use it
+  instead of wrapping every error as `ErrorKind::Other`
 
 ## [0.6.2]
 

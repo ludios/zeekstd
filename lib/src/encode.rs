@@ -1,3 +1,4 @@
+// Model-output: Claude Fable 5.1
 #[cfg(feature = "std")]
 use alloc::vec::Vec;
 use zstd_safe::{
@@ -576,7 +577,10 @@ impl RawEncoder<'_> {
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub struct Encoder<'a, W> {
     raw: RawEncoder<'a>,
+    /// Compressed bytes on their way to the writer: `out_buf[out_buf_written..out_buf_pos]` still
+    /// has to be written, `out_buf[out_buf_pos..]` is free.
     out_buf: Vec<u8>,
+    out_buf_written: usize,
     out_buf_pos: usize,
     writer: W,
     written_compressed: u64,
@@ -604,6 +608,7 @@ impl<'a, W> Encoder<'a, W> {
         Ok(Self {
             raw: opts.into_raw_encoder()?,
             out_buf: alloc::vec![0; CCtx::out_size()],
+            out_buf_written: 0,
             out_buf_pos: 0,
             writer,
             written_compressed: 0,
@@ -653,6 +658,15 @@ impl<'a, W: std::io::Write> Encoder<'a, W> {
         let mut input_progress = 0;
 
         while input_progress < buf.len() {
+            // Consumed input cannot be handed back, so no write error may follow it within one
+            // call: make room before compressing, and once some input went in, leave the error
+            // for the next call to report.
+            match self.flush_out_buf(false) {
+                Ok(()) => {}
+                Err(err) if input_progress == 0 => return Err(err),
+                Err(_) => break,
+            }
+
             let progress = self.raw.compress_with_prefix(
                 &buf[input_progress..],
                 &mut self.out_buf[self.out_buf_pos..],
@@ -664,7 +678,6 @@ impl<'a, W: std::io::Write> Encoder<'a, W> {
             }
 
             self.out_buf_pos += progress.out_progress;
-            self.flush_out_buf(false)?;
             input_progress += progress.in_progress;
         }
 
@@ -712,9 +725,9 @@ impl<W: std::io::Write> Encoder<'_, W> {
         let mut progress = 0;
 
         loop {
+            self.flush_out_buf(false)?;
             let prog = self.raw.end_frame(&mut self.out_buf[self.out_buf_pos..])?;
             self.out_buf_pos += prog.out_progress;
-            self.flush_out_buf(false)?;
             progress += prog.out_progress;
 
             if prog.data_left == 0 {
@@ -761,34 +774,60 @@ impl<W: std::io::Write> Encoder<'_, W> {
     /// Fails if the frame cannot be finished or writing the seek table fails.
     pub fn finish_format(mut self, format: Format) -> Result<u64> {
         self.end_frame()?;
+        self.flush_out_buf(true)?;
+        // Nothing can be retried from here on, `self` is consumed, so plain `write_all` will do
         let mut ser = self.raw.into_seek_table().into_format_serializer(format);
 
         loop {
-            let n = ser.write_into(&mut self.out_buf[self.out_buf_pos..]);
+            let n = ser.write_into(&mut self.out_buf);
             if n == 0 {
-                self.writer.write_all(&self.out_buf[..self.out_buf_pos])?;
-                self.written_compressed += self.out_buf_pos as u64;
-                self.writer.flush()?;
-                return Ok(self.written_compressed);
+                break;
             }
 
-            self.out_buf_pos += n;
-            if self.out_buf_pos == self.out_buf.len() {
-                self.writer.write_all(&self.out_buf[..self.out_buf_pos])?;
-                self.written_compressed += self.out_buf_pos as u64;
-                self.out_buf_pos = 0;
-            }
+            self.writer.write_all(&self.out_buf[..n])?;
+            self.written_compressed += n as u64;
         }
+
+        self.writer.flush()?;
+
+        Ok(self.written_compressed)
     }
 
-    /// Flushes the internal output buffer, if it is filled with data, or force is true.
-    #[inline]
+    /// Writes the buffered compressed bytes to the writer, if the buffer is full or `force` is
+    /// true.
+    ///
+    /// Bytes the writer accepts leave the buffer at once, so when a write fails partway, only the
+    /// bytes still owed remain: calling this again resumes there and never resends a prefix.
     fn flush_out_buf(&mut self, force: bool) -> Result<()> {
-        if self.out_buf_pos == self.out_buf.len() || force {
-            self.writer.write_all(&self.out_buf[..self.out_buf_pos])?;
-            self.written_compressed += self.out_buf_pos as u64;
-            self.out_buf_pos = 0;
+        if self.out_buf_pos < self.out_buf.len() && !force {
+            return Ok(());
         }
+
+        while self.out_buf_written < self.out_buf_pos {
+            let pending = &self.out_buf[self.out_buf_written..self.out_buf_pos];
+            match self.writer.write(pending) {
+                Ok(0) => {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::WriteZero,
+                        "failed to write whole buffer",
+                    )
+                    .into());
+                }
+                Ok(n) => {
+                    assert!(
+                        n <= pending.len(),
+                        "writer accepted more bytes than it was given"
+                    );
+                    self.out_buf_written += n;
+                    self.written_compressed += n as u64;
+                }
+                Err(err) if err.kind() == std::io::ErrorKind::Interrupted => {}
+                Err(err) => return Err(err.into()),
+            }
+        }
+
+        self.out_buf_written = 0;
+        self.out_buf_pos = 0;
 
         Ok(())
     }
@@ -797,11 +836,11 @@ impl<W: std::io::Write> Encoder<'_, W> {
 #[cfg(feature = "std")]
 impl<W: std::io::Write> std::io::Write for Encoder<'_, W> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.compress(buf).map_err(std::io::Error::other)
+        Ok(self.compress(buf)?)
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
-        self.flush_out_buf(true).map_err(std::io::Error::other)?;
+        self.flush_out_buf(true)?;
         self.writer.flush()
     }
 }
@@ -897,6 +936,164 @@ mod tests {
             let descriptor: u8 = seekable[start_pos as usize + 4];
             // Check that the Content_Checksum_flag is set
             assert!(descriptor & 0x4 > 0);
+        }
+    }
+
+    /// Round trips through writers that fail partway, retrying like a caller that still holds its
+    /// data would.
+    #[cfg(feature = "std")]
+    mod io_errors {
+        use std::{
+            io::{self, ErrorKind, Write},
+            ops::Range,
+        };
+
+        use crate::{BytesWrapper, Decoder};
+
+        use super::*;
+
+        /// A writer that accepts at most `chunk` bytes per call and fails, with `kind`, on every
+        /// call whose index (counting from zero) lies in `failing_calls`.
+        struct FlakyWriter {
+            written: Vec<u8>,
+            chunk: usize,
+            calls: usize,
+            failing_calls: Range<usize>,
+            kind: ErrorKind,
+        }
+
+        impl Write for FlakyWriter {
+            fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+                let call = self.calls;
+                self.calls += 1;
+                if self.failing_calls.contains(&call) {
+                    return Err(io::Error::from(self.kind));
+                }
+                let n = buf.len().min(self.chunk);
+                self.written.extend(&buf[..n]);
+                Ok(n)
+            }
+
+            fn flush(&mut self) -> io::Result<()> {
+                Ok(())
+            }
+        }
+
+        /// 200 KiB of xorshift noise: incompressible, so the encoder's output buffer fills up and
+        /// gets written out in the middle of compression.
+        fn noise() -> Vec<u8> {
+            let mut state = 0x9E37_79B9_7F4A_7C15_u64;
+            (0..200 * 1024)
+                .map(|_| {
+                    state ^= state << 13;
+                    state ^= state >> 7;
+                    state ^= state << 17;
+                    state as u8
+                })
+                .collect()
+        }
+
+        /// Feeds `input` to `encoder` in 10 KiB slices, retrying a slice whenever the encoder
+        /// reports an IO error, and returns how many errors it saw.
+        fn compress_with_retries(
+            encoder: &mut Encoder<'_, &mut FlakyWriter>,
+            input: &[u8],
+        ) -> usize {
+            let mut errors = 0;
+            let mut pos = 0;
+            while pos < input.len() {
+                let end = input.len().min(pos + 10 * 1024);
+                match encoder.compress(&input[pos..end]) {
+                    Ok(n) => pos += n,
+                    Err(err) => {
+                        assert!(err.is_io());
+                        errors += 1;
+                    }
+                }
+            }
+            errors
+        }
+
+        /// Flushes `encoder`, retrying on errors of `kind`, and returns how many errors it saw.
+        fn flush_with_retries(
+            encoder: &mut Encoder<'_, &mut FlakyWriter>,
+            kind: ErrorKind,
+        ) -> usize {
+            let mut errors = 0;
+            while let Err(err) = encoder.flush() {
+                assert_eq!(err.kind(), kind);
+                errors += 1;
+            }
+            errors
+        }
+
+        fn decompress_all(seekable: &[u8]) -> Vec<u8> {
+            let mut decoder = Decoder::new(BytesWrapper::new(seekable)).unwrap();
+            let mut output = vec![];
+            let mut buf = vec![0; 64 * 1024];
+            loop {
+                let n = decoder.decompress(&mut buf).unwrap();
+                if n == 0 {
+                    break;
+                }
+                output.extend(&buf[..n]);
+            }
+            output
+        }
+
+        /// Compresses `noise()` through a writer whose calls in `failing_calls` fail with `kind`,
+        /// retrying as a caller would, and checks that the archive decodes back to the input.
+        /// Returns how many errors reached the caller and how many write calls the writer saw, or
+        /// `None` when the failure hit `finish`, which consumes the encoder and so cannot be
+        /// retried.
+        fn round_trip(failing_calls: Range<usize>, kind: ErrorKind) -> Option<(usize, usize)> {
+            let input = noise();
+            let mut writer = FlakyWriter {
+                written: vec![],
+                chunk: 30_000,
+                calls: 0,
+                failing_calls,
+                kind,
+            };
+            let mut encoder = Encoder::new(&mut writer).unwrap();
+            let mut errors = compress_with_retries(&mut encoder, &input);
+            errors += flush_with_retries(&mut encoder, kind);
+            match encoder.finish() {
+                Err(err) => {
+                    assert!(err.is_io());
+                    None
+                }
+                Ok(total) => {
+                    assert_eq!(total, writer.written.len() as u64);
+                    assert_eq!(decompress_all(&writer.written), input);
+                    Some((errors, writer.calls))
+                }
+            }
+        }
+
+        #[test]
+        fn write_errors_never_corrupt_the_archive() {
+            let (_, calls) = round_trip(0..0, ErrorKind::WouldBlock).unwrap();
+            for fail_at in 0..calls {
+                if let Some((errors, _)) = round_trip(fail_at..fail_at + 2, ErrorKind::WouldBlock) {
+                    // Two failures in a row: whatever the first one interrupted, the second hits
+                    // a fresh call and must reach the caller
+                    assert!(
+                        errors >= 1,
+                        "no error reported for write calls {fail_at} and {}",
+                        fail_at + 1
+                    );
+                }
+            }
+        }
+
+        #[test]
+        fn interrupted_writes_are_retried_internally() {
+            let (_, calls) = round_trip(0..0, ErrorKind::Interrupted).unwrap();
+            for fail_at in 0..calls {
+                let (errors, _) = round_trip(fail_at..fail_at + 2, ErrorKind::Interrupted).unwrap();
+                assert_eq!(errors, 0, "interruption of write call {fail_at} leaked");
+            }
         }
     }
 }
