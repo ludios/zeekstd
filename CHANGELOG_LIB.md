@@ -10,12 +10,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Fixed
 
 - `RawEncoder::with_opts` now returns an error if `FrameSizePolicy` has a frame size of 0
+- `Decoder` verifies the checksum of a frame that ends at the offset limit even when the frame
+  trailer arrives in a later read than the frame's content
+- `Decoder` returns an error instead of looping forever when the seekable source ends inside a
+  frame
+- `Decoder` returns an error when a frame's decompressed size differs from its seek table entry
+  instead of silently truncating or misaligning the output
 
 ### Added
 
 The `Error` struct has changed:
 
 - The method `Error::is_invalid_frame_size_policy()` was added
+- The method `Error::is_unexpected_eof()` was added
+- The method `Error::is_frame_size_mismatch()` was added
 
 ## [0.6.2]
 

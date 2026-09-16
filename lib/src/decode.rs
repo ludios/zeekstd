@@ -1,3 +1,4 @@
+// Model-output: Claude Fable 5.1
 use alloc::vec;
 use alloc::vec::Vec;
 use zstd_safe::{DCtx, InBuffer, OutBuffer, ResetDirective};
@@ -122,6 +123,11 @@ pub struct Decoder<'a, S> {
     dctx: DCtx<'a>,
     seek_table: SeekTable,
     src: S,
+    /// Index of the frame the decompression context is in, or about to enter.
+    frame_idx: u32,
+    /// Whether the decompression context sits between frames, i.e. the last frame it saw was
+    /// consumed completely, trailer included.
+    frame_done: bool,
     decomp_pos: u64,
     offset: u64,
     offset_limit: u64,
@@ -175,6 +181,8 @@ impl<'a, S: Seekable> Decoder<'a, S> {
             dctx: opts.dctx,
             seek_table,
             src: opts.src,
+            frame_idx: 0,
+            frame_done: true,
             decomp_pos: 0,
             offset,
             offset_limit,
@@ -191,12 +199,17 @@ impl<'a, S: Seekable> Decoder<'a, S> {
     /// Call this repetetively to fill `buf` with decompressed data. Returns the number of bytes
     /// written to `buf`. Decompression is finished when no more bytes are written to `buf`.
     ///
+    /// Every frame that gets decompressed to its end is verified, i.e. its checksum if it has
+    /// one, and its decompressed size against the seek table. An offset limit inside a frame
+    /// skips the verification of that frame.
+    ///
     /// If a `prefix` is passed, it will be referenced at the beginning of every frame.
     /// Referencing a raw content prefix has almost no CPU nor memory cost.
     ///
     /// # Errors
     ///
-    /// If decompression fails or any parameter is invalid.
+    /// If decompression fails, the source ends inside a frame, a frame disagrees with its seek
+    /// table entry, or any parameter is invalid.
     #[allow(clippy::missing_panics_doc)]
     pub fn decompress_with_prefix<'b: 'a>(
         &mut self,
@@ -204,10 +217,10 @@ impl<'a, S: Seekable> Decoder<'a, S> {
         prefix: Option<&'b [u8]>,
     ) -> Result<usize> {
         if self.read_compressed == 0 {
-            let frame_idx = self.seek_table.frame_index_decomp(self.offset);
-            let start_pos = self.seek_table.frame_start_comp(frame_idx)?;
+            self.frame_idx = self.seek_table.frame_index_decomp(self.offset);
+            let start_pos = self.seek_table.frame_start_comp(self.frame_idx)?;
             self.src.set_offset(OffsetFrom::Start(start_pos))?;
-            self.decomp_pos = self.seek_table.frame_start_decomp(frame_idx)?;
+            self.decomp_pos = self.seek_table.frame_start_decomp(self.frame_idx)?;
             // Reference prefix at the beginning of decompression
             if let Some(pref) = prefix {
                 self.dctx.ref_prefix(pref)?;
@@ -218,10 +231,22 @@ impl<'a, S: Seekable> Decoder<'a, S> {
         }
 
         let mut output_progress = 0;
-        while self.offset < self.offset_limit && output_progress < buf.len() {
+        // Decompressed end of the frame the context is in, `None` past the last frame
+        let mut frame_end = self.seek_table.frame_end_decomp(self.frame_idx).ok();
+        loop {
+            // Stop once no more output is wanted, unless the frame that produced the last wanted
+            // byte still has its trailer to consume.
+            let output_wanted = self.offset < self.offset_limit && output_progress < buf.len();
+            if !output_wanted && !trailer_pending(self.frame_done, frame_end, self.decomp_pos) {
+                break;
+            }
+
             if self.in_buf_pos == self.in_buf_limit {
                 self.in_buf_limit = self.src.read(&mut self.in_buf)?;
                 self.in_buf_pos = 0;
+                if self.in_buf_limit == 0 {
+                    return Err(Error::unexpected_eof());
+                }
             }
 
             let mut in_buffer = InBuffer::around(&self.in_buf[self.in_buf_pos..self.in_buf_limit]);
@@ -231,21 +256,45 @@ impl<'a, S: Seekable> Decoder<'a, S> {
                 OutBuffer::around(&mut self.out_buf[..limit])
             } else {
                 // Bytes we still need to decompress, capped at usize::MAX
-                let remaining: usize = (self.offset_limit - self.decomp_pos)
+                let remaining: usize = self
+                    .offset_limit
+                    .saturating_sub(self.decomp_pos)
                     .try_into()
                     .unwrap_or(usize::MAX);
-                let limit = buf.len().min(output_progress + remaining);
+                let limit = buf.len().min(output_progress.saturating_add(remaining));
                 OutBuffer::around(&mut buf[output_progress..limit])
             };
 
             let in_len = self.in_buf_limit - self.in_buf_pos;
-            while in_buffer.pos() < in_len && out_buffer.pos() < out_buffer.capacity() {
+            while in_buffer.pos() < in_len {
+                let pos = self.decomp_pos + out_buffer.pos() as u64;
+                if out_buffer.pos() == out_buffer.capacity()
+                    && !trailer_pending(self.frame_done, frame_end, pos)
+                {
+                    break;
+                }
+
+                let (in_before, out_before) = (in_buffer.pos(), out_buffer.pos());
                 let n = self
                     .dctx
                     .decompress_stream(&mut out_buffer, &mut in_buffer)?;
+                // Given input and room for output, zstd always makes progress. The only call
+                // made without room is the trailer drain, so a stall means the frame holds more
+                // data than its seek table entry says.
+                if in_buffer.pos() == in_before && out_buffer.pos() == out_before {
+                    return Err(Error::frame_size_mismatch());
+                }
+
                 // Frame end
-                // TODO: chain when stable
-                if n == 0 {
+                self.frame_done = n == 0;
+                if self.frame_done {
+                    let end = self.decomp_pos + out_buffer.pos() as u64;
+                    if frame_end != Some(end) {
+                        return Err(Error::frame_size_mismatch());
+                    }
+                    self.frame_idx += 1;
+                    frame_end = self.seek_table.frame_end_decomp(self.frame_idx).ok();
+                    // TODO: chain when stable
                     if let Some(pref) = prefix {
                         self.dctx
                             .reset(ResetDirective::SessionOnly)
@@ -268,6 +317,13 @@ impl<'a, S: Seekable> Decoder<'a, S> {
 
         Ok(output_progress)
     }
+}
+
+/// Whether a decompression context that sits at decompressed position `pos` still has to consume
+/// the trailer of its current frame, which ends at `frame_end` (`None` past the last frame).
+/// `frame_done` tells whether the context is between frames.
+fn trailer_pending(frame_done: bool, frame_end: Option<u64>, pos: u64) -> bool {
+    !frame_done && frame_end == Some(pos)
 }
 
 impl<S: Seekable> Decoder<'_, S> {
@@ -351,6 +407,7 @@ impl<S: Seekable> Decoder<'_, S> {
 
     fn reset_dctx(&mut self) {
         self.read_compressed = 0;
+        self.frame_done = true;
         self.dctx
             .reset(ResetDirective::SessionOnly)
             .expect("Resetting session never fails");
@@ -580,30 +637,50 @@ impl<S: Seekable> std::io::Seek for Decoder<'_, S> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{BytesWrapper, EncodeOptions, FrameSizePolicy, tests::INPUT};
+    use alloc::string::ToString;
+
+    use crate::{
+        BytesWrapper, EncodeOptions, FrameSizePolicy, SEEK_TABLE_INTEGRITY_SIZE,
+        seek_table::Format, tests::INPUT,
+    };
 
     use super::*;
 
-    fn new_seekable(frame_size_policy: Option<FrameSizePolicy>) -> Vec<u8> {
+    /// Pseudo-random bytes that zstd stores in raw blocks, so flipping one of them can only be
+    /// noticed by the frame checksum.
+    fn noise(len: usize) -> Vec<u8> {
+        let mut x: u64 = 0x9E37_79B9_7F4A_7C15;
+        (0..len)
+            .map(|_| {
+                x ^= x << 13;
+                x ^= x >> 7;
+                x ^= x << 17;
+                (x >> 56) as u8
+            })
+            .collect()
+    }
+
+    /// Compresses `input` into a complete seekable (frames followed by a `Foot` seek table),
+    /// checking that the encoder's progress reports add up to what it wrote.
+    fn encode(input: &[u8], frame_size_policy: Option<FrameSizePolicy>, checksum: bool) -> Vec<u8> {
         let mut seekable = vec![];
         let mut encoder = EncodeOptions::new()
             .frame_size_policy(frame_size_policy.unwrap_or_default())
+            .checksum_flag(checksum)
             .into_raw_encoder()
             .unwrap();
 
-        let mut buf = vec![0; INPUT.len()];
+        let mut buf = vec![0; input.len().max(64)];
 
         let mut in_progress = 0;
         let mut out_progress = 0;
-        while in_progress < INPUT.len() {
-            let progress = encoder
-                .compress(&INPUT.as_bytes()[in_progress..], &mut buf)
-                .unwrap();
+        while in_progress < input.len() {
+            let progress = encoder.compress(&input[in_progress..], &mut buf).unwrap();
             seekable.extend(&buf[..progress.out_progress()]);
             in_progress += progress.in_progress();
             out_progress += progress.out_progress();
         }
-        assert_eq!(in_progress, INPUT.len());
+        assert_eq!(in_progress, input.len());
 
         loop {
             let prog = encoder.end_frame(&mut buf).unwrap();
@@ -626,6 +703,223 @@ mod tests {
         assert_eq!(out_progress + ser.encoded_len(), seekable.len());
 
         seekable
+    }
+
+    fn new_seekable(frame_size_policy: Option<FrameSizePolicy>) -> Vec<u8> {
+        encode(INPUT.as_bytes(), frame_size_policy, false)
+    }
+
+    /// Serves at most `chunk` bytes per read, so that a frame trailer lands in a later read
+    /// than the data it protects.
+    struct ChunkedBytes<'a> {
+        inner: BytesWrapper<'a>,
+        chunk: usize,
+    }
+
+    impl Seekable for ChunkedBytes<'_> {
+        fn set_offset(&mut self, offset: OffsetFrom) -> Result<u64> {
+            self.inner.set_offset(offset)
+        }
+
+        fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+            let len = buf.len().min(self.chunk);
+            self.inner.read(&mut buf[..len])
+        }
+
+        fn seek_table_integrity(
+            &mut self,
+            format: Format,
+        ) -> Result<[u8; SEEK_TABLE_INTEGRITY_SIZE]> {
+            self.inner.seek_table_integrity(format)
+        }
+    }
+
+    /// A decoder over `seekable` whose data reads return at most `chunk` bytes. The seek table
+    /// is parsed from the plain bytes, as the table parser does not cope with short reads yet.
+    fn chunked_decoder(seekable: &[u8], chunk: usize) -> Decoder<'static, ChunkedBytes<'_>> {
+        let st = SeekTable::from_seekable(&mut BytesWrapper::new(seekable)).unwrap();
+        let src = ChunkedBytes {
+            inner: BytesWrapper::new(seekable),
+            chunk,
+        };
+        DecodeOptions::new(src)
+            .seek_table(st)
+            .into_decoder()
+            .unwrap()
+    }
+
+    /// Decompresses everything the decoder is set up to produce, asking for at most `chunk`
+    /// bytes per call.
+    fn decode_all<S: Seekable>(decoder: &mut Decoder<'_, S>, chunk: usize) -> Result<Vec<u8>> {
+        let mut output = vec![];
+        let mut buf = vec![0; chunk];
+        loop {
+            let n = decoder.decompress(&mut buf)?;
+            if n == 0 {
+                return Ok(output);
+            }
+            output.extend_from_slice(&buf[..n]);
+        }
+    }
+
+    fn assert_checksum_error(result: Result<Vec<u8>>, context: &str) {
+        match result {
+            Ok(output) => panic!(
+                "corruption went unnoticed ({context}): got {} bytes",
+                output.len()
+            ),
+            Err(err) => assert!(
+                err.is_zstd() && err.to_string().contains("checksum"),
+                "expected a checksum error ({context}), got: {err}"
+            ),
+        }
+    }
+
+    #[test]
+    fn small_reads_restore_everything() {
+        let input = noise(2500);
+        let seekable = encode(&input, Some(FrameSizePolicy::Uncompressed(1000)), true);
+        let st = SeekTable::from_seekable(&mut BytesWrapper::new(&seekable)).unwrap();
+        assert_eq!(st.num_frames(), 3);
+
+        for chunk in [1, 3, 1000] {
+            let mut decoder = chunked_decoder(&seekable, chunk);
+            assert_eq!(decode_all(&mut decoder, 4096).unwrap(), input);
+            // Every frame, including its trailer, has been consumed
+            assert_eq!(decoder.read_compressed(), st.size_comp());
+        }
+    }
+
+    #[test]
+    fn checksum_verified_when_trailer_arrives_in_a_later_read() {
+        let input = noise(3000);
+        let mut seekable = encode(&input, Some(FrameSizePolicy::Uncompressed(1000)), true);
+        let st = SeekTable::from_seekable(&mut BytesWrapper::new(&seekable)).unwrap();
+        // Flip a payload byte of the last frame
+        let last = st.num_frames() - 1;
+        let payload = st.frame_start_comp(last).unwrap() as usize + 20;
+        seekable[payload] ^= 0xFF;
+
+        for chunk in [1, 3] {
+            let mut decoder = chunked_decoder(&seekable, chunk);
+            assert_checksum_error(
+                decode_all(&mut decoder, 4096),
+                &alloc::format!("{chunk}-byte reads"),
+            );
+        }
+    }
+
+    #[test]
+    fn checksum_verified_when_limit_is_at_an_inner_frame_end() {
+        let input = noise(3000);
+        let mut seekable = encode(&input, Some(FrameSizePolicy::Uncompressed(1000)), true);
+        let st = SeekTable::from_seekable(&mut BytesWrapper::new(&seekable)).unwrap();
+        // Flip a payload byte of the middle frame
+        let payload = st.frame_start_comp(1).unwrap() as usize + 20;
+        seekable[payload] ^= 0xFF;
+
+        let mut decoder = chunked_decoder(&seekable, 1);
+        decoder.set_upper_frame(1).unwrap();
+        assert_checksum_error(decode_all(&mut decoder, 4096), "upper frame 1");
+    }
+
+    #[test]
+    fn checksum_verified_when_trailer_starts_at_input_buffer_boundary() {
+        // Frame header (6 bytes) and raw block header (3 bytes) plus the payload fill the
+        // decoder's input buffer exactly, leaving the checksum for the next read.
+        let input = noise(DCtx::in_size() - 9);
+        let mut seekable = encode(&input, None, true);
+        let st = SeekTable::from_seekable(&mut BytesWrapper::new(&seekable)).unwrap();
+        assert_eq!(st.num_frames(), 1);
+        assert_eq!(
+            st.frame_size_comp(0).unwrap(),
+            DCtx::in_size() as u64 + 4,
+            "test setup: the checksum must start at the input buffer boundary"
+        );
+        seekable[100] ^= 0xFF;
+
+        let mut decoder = Decoder::new(BytesWrapper::new(&seekable)).unwrap();
+        // A buffer large enough to take the whole frame content in one call, like the CLI uses
+        assert_checksum_error(
+            decode_all(&mut decoder, input.len() + 1),
+            "input buffer boundary",
+        );
+    }
+
+    #[test]
+    fn truncated_source_is_rejected() {
+        let input = noise(2500);
+        let seekable = encode(&input, Some(FrameSizePolicy::Uncompressed(1000)), true);
+        let st = SeekTable::from_seekable(&mut BytesWrapper::new(&seekable)).unwrap();
+        let data_len = st.size_comp() as usize;
+
+        // Cut off the last checksum only, then part of the last frame's content
+        for cut in [4, 100] {
+            let src = BytesWrapper::new(&seekable[..data_len - cut]);
+            let mut decoder = DecodeOptions::new(src)
+                .seek_table(st.clone())
+                .into_decoder()
+                .unwrap();
+            let result = decode_all(&mut decoder, 4096);
+            assert!(
+                result.as_ref().is_err_and(Error::is_unexpected_eof),
+                "source cut by {cut} bytes: {:?}",
+                result.as_ref().map(Vec::len)
+            );
+        }
+    }
+
+    #[test]
+    fn source_that_ends_at_the_last_frame_is_accepted() {
+        // Without checksums the last frame's final input byte is part of its last block, and the
+        // detached seek table leaves nothing behind it. zstd keeps that byte unconsumed until all
+        // buffered output is flushed, so the tiny output buffer never makes the decoder read at
+        // EOF while output is still owed.
+        let input = noise(2500);
+        let seekable = encode(&input, Some(FrameSizePolicy::Uncompressed(1000)), false);
+        let st = SeekTable::from_seekable(&mut BytesWrapper::new(&seekable)).unwrap();
+        let data = &seekable[..st.size_comp() as usize];
+        let mut decoder = DecodeOptions::new(BytesWrapper::new(data))
+            .seek_table(st)
+            .into_decoder()
+            .unwrap();
+        assert_eq!(decode_all(&mut decoder, 7).unwrap(), input);
+    }
+
+    #[test]
+    fn seek_table_that_disagrees_with_frame_is_rejected() {
+        let input = noise(1500);
+        let seekable = encode(&input, Some(FrameSizePolicy::Uncompressed(1000)), true);
+        let st = SeekTable::from_seekable(&mut BytesWrapper::new(&seekable)).unwrap();
+        assert_eq!(st.num_frames(), 2);
+
+        let sizes = |i: u32| {
+            (
+                st.frame_size_comp(i).unwrap() as u32,
+                st.frame_size_decomp(i).unwrap() as u32,
+            )
+        };
+        let (c_size_0, d_size_0) = sizes(0);
+
+        // Declare the first frame one byte shorter, then one byte longer, than it is
+        for wrong_d_size_0 in [d_size_0 - 1, d_size_0 + 1] {
+            let mut wrong = SeekTable::new();
+            wrong.log_frame(c_size_0, wrong_d_size_0).unwrap();
+            for i in 1..st.num_frames() {
+                let (c_size, d_size) = sizes(i);
+                wrong.log_frame(c_size, d_size).unwrap();
+            }
+            let mut decoder = DecodeOptions::new(BytesWrapper::new(&seekable))
+                .seek_table(wrong)
+                .into_decoder()
+                .unwrap();
+            let result = decode_all(&mut decoder, 4096);
+            assert!(
+                result.as_ref().is_err_and(Error::is_frame_size_mismatch),
+                "first frame declared as {wrong_d_size_0} instead of {d_size_0} bytes: {:?}",
+                result.as_ref().map(Vec::len)
+            );
+        }
     }
 
     #[test]

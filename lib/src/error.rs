@@ -1,3 +1,4 @@
+// Model-output: Claude Fable 5.1
 use zstd_safe::{ErrorCode, get_error_name, zstd_sys::ZSTD_ErrorCode};
 
 /// A `Result` alias where the `Err` case is `zeekstd::Error`.
@@ -48,6 +49,28 @@ impl Error {
         matches!(self.kind, Kind::InvalidFrameSizePolicy)
     }
 
+    pub(crate) fn unexpected_eof() -> Self {
+        Self {
+            kind: Kind::UnexpectedEof,
+        }
+    }
+
+    /// Returns true if the seekable source ended inside a frame.
+    pub fn is_unexpected_eof(&self) -> bool {
+        matches!(self.kind, Kind::UnexpectedEof)
+    }
+
+    pub(crate) fn frame_size_mismatch() -> Self {
+        Self {
+            kind: Kind::FrameSizeMismatch,
+        }
+    }
+
+    /// Returns true if a frame's decompressed size differs from its seek table entry.
+    pub fn is_frame_size_mismatch(&self) -> bool {
+        matches!(self.kind, Kind::FrameSizeMismatch)
+    }
+
     pub(crate) fn zstd(code: ZSTD_ErrorCode) -> Self {
         let wrapped = 0_usize.wrapping_sub(code as usize);
         Self {
@@ -75,6 +98,10 @@ impl core::fmt::Display for Error {
             Kind::OffsetOutOfRange => f.write_str("offset out of range"),
             Kind::FrameIndexTooLarge => f.write_str("frame index too large"),
             Kind::InvalidFrameSizePolicy => f.write_str("invalid frame size policy"),
+            Kind::UnexpectedEof => f.write_str("seekable source ended inside a frame"),
+            Kind::FrameSizeMismatch => {
+                f.write_str("frame's decompressed size differs from its seek table entry")
+            }
             #[cfg(feature = "std")]
             Kind::IO(err) => write!(f, "io error: {err}"),
             Kind::Zstd(code) => f.write_str(get_error_name(*code)),
@@ -119,6 +146,10 @@ enum Kind {
     FrameIndexTooLarge,
     /// The frame size policy is invalid.
     InvalidFrameSizePolicy,
+    /// The seekable source ended inside a frame.
+    UnexpectedEof,
+    /// A frame's decompressed size differs from its seek table entry.
+    FrameSizeMismatch,
     /// IO error.
     #[cfg(feature = "std")]
     IO(std::io::Error),
@@ -135,6 +166,8 @@ impl core::fmt::Debug for Kind {
             Self::OffsetOutOfRange => write!(f, "OffsetOutOfRange"),
             Self::FrameIndexTooLarge => write!(f, "FrameIndexTooLarge"),
             Self::InvalidFrameSizePolicy => write!(f, "InvalidFrameSizePolicy"),
+            Self::UnexpectedEof => write!(f, "UnexpectedEof"),
+            Self::FrameSizeMismatch => write!(f, "FrameSizeMismatch"),
             #[cfg(feature = "std")]
             Self::IO(arg0) => f.debug_tuple("IO").field(arg0).finish(),
             Self::Zstd(c) => write!(f, "{}; code {}", zstd_safe::get_error_name(*c), c),
