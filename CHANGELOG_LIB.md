@@ -9,6 +9,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- `SeekTable::from_seekable_format` no longer fails or panics when the source returns fewer than
+  17 bytes per read
 - `SeekTable::from_reader` parses only the bytes the reader returned. Short reads no longer turn
   unread buffer space into entries, a truncated seek table is rejected, and interrupted reads are
   retried

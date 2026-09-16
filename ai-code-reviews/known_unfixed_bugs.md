@@ -11,22 +11,10 @@ reasons given in their entries.
 When a fix lands, drop the `#[ignore]` from its test and delete the entry here.
 
 Fixed since the review and therefore not listed: 1, 2 and 8 (92c2102), 9 (7aaf00e), 13 (06f093f),
-3 (2026-09-16), 7 (11b509a and 2026-09-16) and the decoder arithmetic of 14 (92c2102). The two repros
+3 and 10 (2026-09-16), 7 (11b509a and 2026-09-16) and the decoder arithmetic of 14 (92c2102). The two repros
 Codex gave for 2 and 8 are kept as regression tests in `lib/tests/known_bugs.rs`.
 
 ## Medium
-
-### 10. `from_seekable_format` breaks on short reads
-
-The header loop reads into the start of the buffer on every iteration, so each short read
-overwrites the previous one. Reads of 1 or 4 bytes then fail with `Unknown frame descriptor`. For
-`Head` tables the code slices `buf[17..read]` after only 8 bytes are guaranteed, so reads of 8, 9
-or 16 bytes panic.
-
-Tests: `short_reads_parse_head_table`, `short_reads_parse_foot_table`.
-
-Fix: read into `buf[read..]` and require the full format prefix, 8 bytes for `Foot` and 17 for
-`Head`, before slicing.
 
 ### 11. Legacy seek table checksums are ignored
 

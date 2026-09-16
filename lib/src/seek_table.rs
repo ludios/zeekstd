@@ -439,51 +439,27 @@ impl SeekTable {
             Format::Foot => src.set_offset(OffsetFrom::End(-(parser.seek_table_size as i64)))?,
         };
 
-        let len = 8192.min(parser.seek_table_size);
-        let mut buf = vec![0u8; len];
+        // The entries follow the skippable header, and in Head format also the integrity field
+        // that was read above
+        let prefix_len = match format {
+            Format::Head => SKIPPABLE_HEADER_SIZE + SEEK_TABLE_INTEGRITY_SIZE,
+            Format::Foot => SKIPPABLE_HEADER_SIZE,
+        };
+        // Never larger than the seek table frame, so reads cannot run past it
+        let mut buf = vec![0u8; 8192.min(parser.seek_table_size)];
         let mut read = 0;
-        while read < SKIPPABLE_HEADER_SIZE {
-            let n = src.read(&mut buf)?;
+        while read < prefix_len {
+            let n = src.read(&mut buf[read..])?;
             if n == 0 {
-                // Error if src is EOF already
                 return Err(Error::zstd(ZSTD_ErrorCode::ZSTD_error_corruption_detected));
             }
             read += n;
         }
         parser.verify_skippable_header(&buf[..SKIPPABLE_HEADER_SIZE])?;
 
-        let mut buf_start = SKIPPABLE_HEADER_SIZE;
-        if matches!(format, Format::Head) {
-            buf_start += SEEK_TABLE_INTEGRITY_SIZE;
-        }
-
-        // Data that still has to be parsed
-        let mut remaining =
-            parser.seek_table_size - SKIPPABLE_HEADER_SIZE - SEEK_TABLE_INTEGRITY_SIZE;
-
-        let mut buf_end = read;
-        loop {
-            let n = parser.parse_entries(&buf[buf_start..buf_end])?;
-            remaining -= n;
-            if remaining == 0 {
-                break;
-            }
-
-            // Move remaining data (if any) to the beginning
-            let r = buf_start + n..buf_end;
-            let offset = r.len();
-            buf.copy_within(r, 0);
-
-            // Read in more data
-            let n = src.read(&mut buf[offset..])?;
-            if remaining > 0 && n == 0 {
-                // Error if src is EOF but there is data remaining
-                return Err(Error::zstd(ZSTD_ErrorCode::ZSTD_error_corruption_detected));
-            }
-
-            buf_start = 0;
-            buf_end = offset + n;
-        }
+        // Entry bytes that arrived together with the prefix move to the front of the buffer
+        buf.copy_within(prefix_len..read, 0);
+        parser.parse_all(&mut buf, read - prefix_len, |dst| src.read(dst))?;
         parser.verify()?;
 
         Ok(parser.into())
@@ -1259,6 +1235,53 @@ mod tests {
         let mut wrapper = BytesWrapper::new(buf.get_ref());
         let from_bytes = SeekTable::from_seekable_format(&mut wrapper, format).unwrap();
         assert_eq!(from_bytes, st);
+    }
+
+    /// Serves at most `chunk` bytes per read.
+    struct ChunkedBytes<'a> {
+        inner: BytesWrapper<'a>,
+        chunk: usize,
+    }
+
+    impl Seekable for ChunkedBytes<'_> {
+        fn set_offset(&mut self, offset: OffsetFrom) -> Result<u64> {
+            self.inner.set_offset(offset)
+        }
+
+        fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+            let len = buf.len().min(self.chunk);
+            self.inner.read(&mut buf[..len])
+        }
+
+        fn seek_table_integrity(
+            &mut self,
+            format: Format,
+        ) -> Result<[u8; SEEK_TABLE_INTEGRITY_SIZE]> {
+            self.inner.seek_table_integrity(format)
+        }
+    }
+
+    #[test]
+    fn serde_cycle_with_short_reads() {
+        for format in [Format::Head, Format::Foot] {
+            for num_frames in [0, 1, 2, 7, 1500] {
+                let st = seek_table(num_frames);
+                let mut ser = st.clone().into_format_serializer(format);
+                let mut bytes = vec![0; ser.encoded_len()];
+                assert_eq!(ser.write_into(&mut bytes), bytes.len());
+                for chunk in [1, 2, 3, 7, 8, 9, 16, 17, 100, 8192] {
+                    let mut src = ChunkedBytes {
+                        inner: BytesWrapper::new(&bytes),
+                        chunk,
+                    };
+                    let parsed =
+                        SeekTable::from_seekable_format(&mut src, format).unwrap_or_else(|err| {
+                            panic!("{format:?}, {num_frames} frames, {chunk}-byte reads: {err}")
+                        });
+                    assert_eq!(parsed, st);
+                }
+            }
+        }
     }
 
     #[test]

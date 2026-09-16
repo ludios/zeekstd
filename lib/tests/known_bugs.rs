@@ -221,13 +221,11 @@ fn short_reads_parse_correctly(format: Format) {
 }
 
 #[test]
-#[ignore = "known unfixed: header loop overwrites the buffer start and Head slices buf[17..read] with read < 17"]
 fn short_reads_parse_head_table() {
     short_reads_parse_correctly(Format::Head);
 }
 
 #[test]
-#[ignore = "known unfixed: header loop overwrites the buffer start on reads shorter than 8 bytes"]
 fn short_reads_parse_foot_table() {
     short_reads_parse_correctly(Format::Foot);
 }
