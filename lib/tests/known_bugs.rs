@@ -199,7 +199,6 @@ fn from_reader_rejects_truncated_table() {
 /// Finding 7: a table header claiming many frames must not be trusted with a large allocation
 /// before the source is known to hold the table.
 #[test]
-#[ignore = "known unfixed: Parser::from_bytes reserves num_frames entries before any validation"]
 fn forged_frame_count_does_not_allocate_before_validation() {
     let forged = foot_table_without_entries(10_000_000);
     PeakAlloc::reset();

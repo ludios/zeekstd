@@ -1,3 +1,4 @@
+// Model-output: Claude Fable 5.1
 use alloc::vec;
 use alloc::vec::Vec;
 
@@ -103,11 +104,6 @@ struct Entry {
 struct Entries(Vec<Entry>);
 
 impl Entries {
-    fn with_num_frames(num_frames: usize) -> Self {
-        // Add one for the final entry
-        Self(Vec::with_capacity(num_frames + 1))
-    }
-
     fn into_frames(self) -> Vec<Frame> {
         self.0
             .windows(2)
@@ -163,7 +159,8 @@ impl Parser {
             num_frames,
             size_per_frame,
             seek_table_size,
-            entries: Entries::with_num_frames(num_frames),
+            // Grows as entries arrive: the claimed frame count is not trusted with an allocation
+            entries: Entries(Vec::new()),
             c_offset: 0,
             d_offset: 0,
         })
@@ -183,16 +180,17 @@ impl Parser {
 
     /// Parses entries from `buf`.
     ///
-    /// Only parses complete frames, returns the number of bytes consumed.
-    fn parse_entries(&mut self, buf: &[u8]) -> usize {
+    /// Only parses complete frames, returns the number of bytes consumed. Fails if memory for an
+    /// entry cannot be reserved.
+    fn parse_entries(&mut self, buf: &[u8]) -> Result<usize> {
         let mut pos: usize = 0;
 
         while self.entries.0.len() < self.num_frames {
             if pos + self.size_per_frame > buf.len() {
-                return pos;
+                return Ok(pos);
             }
 
-            self.log_entry();
+            self.log_entry()?;
 
             // Casting u32 to u64 is fine
             self.c_offset += read_le32!(buf, pos) as u64;
@@ -201,16 +199,27 @@ impl Parser {
         }
 
         // Add a final entry that marks the end of the last frame
-        self.log_entry();
+        self.log_entry()?;
 
-        pos
+        Ok(pos)
     }
 
-    fn log_entry(&mut self) {
+    /// Appends an entry at the current offsets.
+    ///
+    /// Memory is reserved one entry at a time and fallibly, so a header claiming many frames
+    /// costs nothing until the entries really arrive, and an exhausted allocator becomes an error
+    /// rather than an abort.
+    fn log_entry(&mut self) -> Result<()> {
+        self.entries
+            .0
+            .try_reserve(1)
+            .map_err(|_| Error::zstd(ZSTD_ErrorCode::ZSTD_error_memory_allocation))?;
         self.entries.0.push(Entry {
             c_offset: self.c_offset,
             d_offset: self.d_offset,
         });
+
+        Ok(())
     }
 
     fn verify(&self) -> Result<()> {
@@ -273,7 +282,9 @@ impl Default for SeekTable {
 }
 
 impl From<Parser> for SeekTable {
-    fn from(value: Parser) -> Self {
+    fn from(mut value: Parser) -> Self {
+        // The entries grew by doubling while parsing, keep only what the table needs
+        value.entries.0.shrink_to_fit();
         SeekTable {
             entries: value.entries,
         }
@@ -407,7 +418,7 @@ impl SeekTable {
 
         let mut buf_end = read;
         loop {
-            let n = parser.parse_entries(&buf[buf_start..buf_end]);
+            let n = parser.parse_entries(&buf[buf_start..buf_end])?;
             remaining -= n;
             if remaining == 0 {
                 break;
@@ -476,7 +487,7 @@ impl SeekTable {
                 return Err(Error::zstd(ZSTD_ErrorCode::ZSTD_error_corruption_detected));
             }
 
-            let n = parser.parse_entries(&buf);
+            let n = parser.parse_entries(&buf)?;
             remaining -= n;
             if remaining == 0 {
                 break;

@@ -11,7 +11,7 @@ reasons given in their entries.
 When a fix lands, drop the `#[ignore]` from its test and delete the entry here.
 
 Fixed since the review and therefore not listed: 1, 2 and 8 (92c2102), 9 (7aaf00e), 13 (06f093f),
-the 16x overallocation of 7 (11b509a) and the decoder arithmetic of 14 (92c2102). The two repros
+7 (11b509a and the commits of 2026-09-16) and the decoder arithmetic of 14 (92c2102). The two repros
 Codex gave for 2 and 8 are kept as regression tests in `lib/tests/known_bugs.rs`.
 
 ## High
@@ -25,18 +25,6 @@ how many bytes the last `read` returned. A reader that returns one byte per call
 Tests: `from_reader_survives_one_byte_reads`, `from_reader_rejects_truncated_table`.
 
 Fix: track how much of the buffer is filled and parse only that, as `from_seekable_format` does.
-
-### 7. Frame counts from the header are trusted before the source is checked
-
-`Parser::from_bytes` reserves `num_frames + 1` entries before anything shows that the source can
-hold that many. The 16x factor is gone, but a 17-byte source claiming ten million frames still
-requests 160 MB, the maximum frame count requests 2 GiB, and the reservation is infallible, so an
-allocation failure aborts the process.
-
-Test: `forged_frame_count_does_not_allocate_before_validation`.
-
-Fix: check the declared table size against the source length before reserving, and reserve with
-`try_reserve` so that a refusal becomes an error.
 
 ## Medium
 

@@ -9,6 +9,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Parsing a seek table no longer reserves memory for the number of frames its header claims
+  before any entry was read. Entries are allocated as they arrive, and an allocation failure is
+  reported as a zstd memory allocation error instead of aborting the process
 - `RawEncoder::with_opts` now returns an error if `FrameSizePolicy` has a frame size of 0
 - `Decoder` verifies the checksum of a frame that ends at the offset limit even when the frame
   trailer arrives in a later read than the frame's content
