@@ -1,0 +1,68 @@
+{
+  "cli": {
+    "commands": 1716,
+    "writer_attempts": 520,
+    "writes_ok": 520,
+    "hash_checks": 1148,
+    "hash_pass": 1148
+  },
+  "library": {
+    "commands": 647,
+    "writer_attempts": 183,
+    "writes_ok": 182,
+    "hash_checks": 432,
+    "hash_pass": 432
+  },
+  "large": {
+    "commands": 67,
+    "writer_attempts": 8,
+    "writes_ok": 8,
+    "hash_checks": 47,
+    "hash_pass": 45
+  },
+  "special": {
+    "commands": 82,
+    "writer_attempts": 20,
+    "writes_ok": 20,
+    "hash_checks": 62,
+    "hash_pass": 28
+  },
+  "followups": {
+    "commands": 116,
+    "writer_attempts": 32,
+    "writes_ok": 32,
+    "hash_checks": 81,
+    "hash_pass": 76
+  },
+  "extended": {
+    "commands": 49,
+    "writer_attempts": 10,
+    "writes_ok": 10,
+    "hash_checks": 39,
+    "hash_pass": 18
+  },
+  "recovery": {
+    "commands": 20,
+    "writer_attempts": 0,
+    "writes_ok": 0,
+    "hash_checks": 20,
+    "hash_pass": 19
+  },
+  "dependency-audit": {
+    "commands": 261,
+    "writer_attempts": 0,
+    "writes_ok": 0,
+    "hash_checks": 261,
+    "hash_pass": 261
+  },
+  "corpus": {
+    "commands": 12,
+    "writer_attempts": 4,
+    "writes_ok": 4,
+    "hash_checks": 8,
+    "hash_pass": 8
+  }
+}
+Total writer attempts: 777 successful: 776
+Total hash checks: 2098 passing: 2035
+Non-passing command transcripts: 64

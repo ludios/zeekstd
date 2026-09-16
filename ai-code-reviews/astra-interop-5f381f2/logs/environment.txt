@@ -1,0 +1,19 @@
+UTC: 2026-09-16T10:58:11.123354+00:00
+platform: Linux-6.18.51-x86_64-with-glibc2.42
+$ zstd --version
+*** Zstandard CLI (64-bit) v1.5.7, by Yann Collet ***
+$ pzstd --version
+PZSTD version: 1.5.7.
+$ cargo --version
+cargo 1.100.0-nightly (e8cb624d5 2026-08-22)
+$ rustc --version
+rustc 1.100.0-nightly (17fd5b8a3 2026-08-28)
+$ python3 --version
+Python 3.14.7
+$ zeekstd/target/release/zeekstd --version
+zeekstd_cli 0.4.5
+$ zeekstd/target/release/examples/interop_probe version
+libzstd 1.5.7
+c80a72ccc7d7c07b5079286b5ac419512b7ae8df3ea9184694484b2013357028 zeekstd/Cargo.lock
+8f019fe11dae08b2b299ba8182776470cf8e1c130946aa65c0dec688e71ba292 zeekstd/target/release/zeekstd
+6271d7773e205068c841382e821042c9820ff5a1f05f920bf47f2b2fd0bd9abe zeekstd/target/release/examples/interop_probe

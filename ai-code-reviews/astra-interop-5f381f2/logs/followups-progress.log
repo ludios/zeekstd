@@ -1,0 +1,6 @@
+NONPASS control-concat patch rc=1 match=False 'results/control-concat.zst : Decoding error (36) : Data corruption detected \n'
+NONPASS trained-raw zstd rc=1 match=False 'results/trained-raw.zst : Decoding error (36) : Dictionary mismatch \n'
+NONPASS trained-writer zstd rc=1 match=False 'results/trained-writer.zst : Decoding error (36) : Dictionary mismatch \n'
+NONPASS collision-input zstd rc=0 match=False ''
+NONPASS collision-sidecar zstd rc=1 match=False 'zstd: results/collision-sidecar.zst: unsupported format \n'
+DONE followups

@@ -1,0 +1,2 @@
+NONPASS context-workers=2 encode rc=1 match=None 'ERROR: zstd: Unsupported parameter\n'
+DONE library

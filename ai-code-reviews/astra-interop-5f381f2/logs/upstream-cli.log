@@ -1,0 +1,84 @@
+warning: Cargo.toml: `lints.clippy.cast-lossless` is deprecated in favor of `lints.clippy.cast_lossless` and will not work in a future edition
+warning: Cargo.toml: `lints.clippy.struct-excessive-bools` is deprecated in favor of `lints.clippy.struct_excessive_bools` and will not work in a future edition
+warning: workspace (manifest) generated 2 warnings
+warning: lib/Cargo.toml: `lints.clippy.cast-lossless` is deprecated in favor of `lints.clippy.cast_lossless` and will not work in a future edition
+warning: lib/Cargo.toml: `lints.clippy.struct-excessive-bools` is deprecated in favor of `lints.clippy.struct_excessive_bools` and will not work in a future edition
+warning: `zeekstd` (manifest) generated 2 warnings
+warning: cli/Cargo.toml: `lints.clippy.cast-lossless` is deprecated in favor of `lints.clippy.cast_lossless` and will not work in a future edition
+warning: cli/Cargo.toml: `lints.clippy.struct-excessive-bools` is deprecated in favor of `lints.clippy.struct_excessive_bools` and will not work in a future edition
+warning: `zeekstd_cli` (manifest) generated 2 warnings
+   Compiling utf8parse v0.2.2
+   Compiling anstyle-query v1.1.5
+   Compiling zstd-safe v7.2.4
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling portable-atomic v1.14.0
+   Compiling colorchoice v1.0.5
+   Compiling unicode-width v0.2.2
+   Compiling heck v0.5.0
+   Compiling anyhow v1.0.104
+   Compiling strsim v0.11.1
+   Compiling predicates-core v1.0.10
+   Compiling termtree v0.5.1
+   Compiling regex-automata v0.4.16
+   Compiling unit-prefix v0.5.2
+   Compiling assert_cmd v2.2.2
+   Compiling difflib v0.4.0
+   Compiling memmap2 v0.9.11
+   Compiling zstd-sys v2.0.16+zstd.1.5.7
+   Compiling syn v3.0.3
+   Compiling anstyle-parse v1.0.0
+   Compiling predicates-tree v1.0.13
+   Compiling anstream v1.0.0
+   Compiling console v0.16.4
+   Compiling predicates v3.1.4
+   Compiling clap_builder v4.6.6
+   Compiling indicatif v0.18.6
+   Compiling bstr v1.13.0
+   Compiling clap_derive v4.6.4
+   Compiling zeekstd v0.6.2 (/tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/codex-independent-interop/zeekstd/lib)
+   Compiling clap v4.6.6
+   Compiling zeekstd_cli v0.4.5 (/tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/codex-independent-interop/zeekstd/cli)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.29s
+     Running unittests src/main.rs (zeekstd/target/debug/build/zeekstd_cli/57b158c00d6e21ac/out/zeekstd-57b158c00d6e21ac)
+
+running 11 tests
+test args::tests::num_frames_greater_zero ... ok
+test args::tests::decompress_end_frame ... ok
+test args::tests::test_byte_value_from_str_invalid_unit ... ok
+test args::tests::num_frames_provides_correct_addiitonal_frames ... ok
+test args::tests::test_byte_value_from_str_non_numeric_value ... ok
+test args::tests::test_byte_value_from_str_missing_value ... ok
+test args::tests::test_byte_value_from_str_no_unit ... ok
+test args::tests::test_byte_value_from_str_valid_b ... ok
+test args::tests::test_byte_value_from_str_valid_gib ... ok
+test args::tests::test_byte_value_from_str_valid_kib ... ok
+test args::tests::test_byte_value_from_str_valid_mib ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/integration/main.rs (zeekstd/target/debug/build/zeekstd_cli/c3979aa442e1e285/out/integration-c3979aa442e1e285)
+
+running 20 tests
+test do_not_create_out_file_if_input_file_does_not_exist ... ok
+test derive_out_name_when_compressing ... ok
+test derive_out_name_when_decompressing ... ok
+test fail_to_derive_out_name_when_decompressing_without_extension ... ok
+test do_not_overwrite_existing_output_file ... ok
+test do_not_overwrite_existing_seek_table_file ... ok
+test fail_to_derive_out_name_when_decompressing_with_unknown_extension ... ok
+test use_provided_output_path_during_decompression ... ok
+test decompress_frame_index_out_of_range ... ok
+test list_seekable ... ok
+test decompress_frames_separate_seek_table ... ok
+test list_separate_seek_table ... ok
+test decompress_between_offset_and_offset_limit ... ok
+test decompress_frames ... ok
+test force_overwrite_existing_file ... ok
+test cycle_stdin ... ok
+test cycle_with_separate_seek_table ... ok
+test cycle ... ok
+test cycle_stdout ... ok
+test cycle_stdin_to_stdout ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.83s
+

@@ -1,0 +1,11 @@
+warning: Cargo.toml: `lints.clippy.cast-lossless` is deprecated in favor of `lints.clippy.cast_lossless` and will not work in a future edition
+warning: Cargo.toml: `lints.clippy.struct-excessive-bools` is deprecated in favor of `lints.clippy.struct_excessive_bools` and will not work in a future edition
+warning: workspace (manifest) generated 2 warnings
+warning: lib/Cargo.toml: `lints.clippy.cast-lossless` is deprecated in favor of `lints.clippy.cast_lossless` and will not work in a future edition
+warning: lib/Cargo.toml: `lints.clippy.struct-excessive-bools` is deprecated in favor of `lints.clippy.struct_excessive_bools` and will not work in a future edition
+warning: `zeekstd` (manifest) generated 2 warnings
+warning: cli/Cargo.toml: `lints.clippy.cast-lossless` is deprecated in favor of `lints.clippy.cast_lossless` and will not work in a future edition
+warning: cli/Cargo.toml: `lints.clippy.struct-excessive-bools` is deprecated in favor of `lints.clippy.struct_excessive_bools` and will not work in a future edition
+warning: `zeekstd_cli` (manifest) generated 2 warnings
+   Compiling zeekstd v0.6.2 (/tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/codex-independent-interop/zeekstd/lib)
+    Finished `release` profile [optimized] target(s) in 0.32s

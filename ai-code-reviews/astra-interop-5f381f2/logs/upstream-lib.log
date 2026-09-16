@@ -1,0 +1,149 @@
+warning: Cargo.toml: `lints.clippy.cast-lossless` is deprecated in favor of `lints.clippy.cast_lossless` and will not work in a future edition
+warning: Cargo.toml: `lints.clippy.struct-excessive-bools` is deprecated in favor of `lints.clippy.struct_excessive_bools` and will not work in a future edition
+warning: workspace (manifest) generated 2 warnings
+warning: lib/Cargo.toml: `lints.clippy.cast-lossless` is deprecated in favor of `lints.clippy.cast_lossless` and will not work in a future edition
+warning: lib/Cargo.toml: `lints.clippy.struct-excessive-bools` is deprecated in favor of `lints.clippy.struct_excessive_bools` and will not work in a future edition
+warning: `zeekstd` (manifest) generated 2 warnings
+warning: cli/Cargo.toml: `lints.clippy.cast-lossless` is deprecated in favor of `lints.clippy.cast_lossless` and will not work in a future edition
+warning: cli/Cargo.toml: `lints.clippy.struct-excessive-bools` is deprecated in favor of `lints.clippy.struct_excessive_bools` and will not work in a future edition
+warning: `zeekstd_cli` (manifest) generated 2 warnings
+   Compiling libc v0.2.189
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.24
+   Compiling cfg-if v1.0.4
+   Compiling find-msvc-tools v0.1.9
+   Compiling shlex v2.0.1
+   Compiling zerocopy v0.8.55
+   Compiling getrandom v0.3.4
+   Compiling serde_core v1.0.229
+   Compiling crossbeam-utils v0.8.22
+   Compiling crossbeam-epoch v0.9.20
+   Compiling pkg-config v0.3.33
+   Compiling autocfg v1.5.1
+   Compiling rustix v1.1.4
+   Compiling zmij v1.0.23
+   Compiling serde v1.0.229
+   Compiling crossbeam-deque v0.8.7
+   Compiling getrandom v0.4.3
+   Compiling bitflags v2.13.1
+   Compiling linux-raw-sys v0.12.1
+   Compiling serde_json v1.0.151
+   Compiling rayon-core v1.13.0
+   Compiling regex-syntax v0.8.11
+   Compiling either v1.17.0
+   Compiling itoa v1.0.18
+   Compiling memchr v2.8.3
+   Compiling once_cell v1.21.4
+   Compiling plotters-backend v0.3.7
+   Compiling fastrand v2.5.0
+   Compiling zstd-safe v7.2.4
+   Compiling clap_lex v1.1.0
+   Compiling anstyle v1.0.14
+   Compiling ciborium-io v0.2.2
+   Compiling bit-vec v0.8.0
+   Compiling same-file v1.0.6
+   Compiling clap_builder v4.6.6
+   Compiling quick-error v1.2.3
+   Compiling itertools v0.13.0
+   Compiling fnv v1.0.7
+   Compiling cast v0.3.0
+   Compiling walkdir v2.5.0
+   Compiling anes v0.1.6
+   Compiling unarray v0.1.4
+   Compiling oorandom v11.1.5
+   Compiling plotters-svg v0.3.7
+   Compiling num-traits v0.2.19
+   Compiling bit-set v0.8.0
+   Compiling syn v2.0.119
+   Compiling syn v3.0.3
+   Compiling jobserver v0.1.35
+   Compiling wait-timeout v0.2.1
+   Compiling page_size v0.6.0
+   Compiling plotters v0.3.7
+   Compiling rand_core v0.9.5
+   Compiling cc v1.4.0
+   Compiling rand v0.9.5
+   Compiling rand_xorshift v0.4.0
+   Compiling rayon v1.12.0
+   Compiling tempfile v3.27.0
+   Compiling criterion-plot v0.8.2
+   Compiling regex-automata v0.4.16
+   Compiling rusty-fork v0.3.1
+   Compiling zstd-sys v2.0.16+zstd.1.5.7
+   Compiling alloca v0.4.0
+   Compiling clap v4.6.6
+   Compiling serde_derive v1.0.229
+   Compiling regex v1.13.1
+   Compiling zerocopy-derive v0.8.55
+   Compiling zstd v0.13.3
+   Compiling tinytemplate v1.2.1
+   Compiling half v2.7.1
+   Compiling ppv-lite86 v0.2.21
+   Compiling ciborium-ll v0.2.2
+   Compiling rand_chacha v0.9.0
+   Compiling ciborium v0.2.2
+   Compiling proptest v1.11.0
+   Compiling criterion v0.8.2
+   Compiling zeekstd v0.6.2 (/tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/codex-independent-interop/zeekstd/lib)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.02s
+     Running unittests src/lib.rs (zeekstd/target/debug/build/zeekstd/9741bb420212757b/out/zeekstd-9741bb420212757b)
+
+running 54 tests
+test decode::tests::decompress_and_reset ... ok
+test decode::tests::set_frame_boundaries ... ok
+test decode::tests::decompress_last_frames ... ok
+test decode::tests::seek_table_that_disagrees_with_frame_is_rejected ... ok
+test decode::tests::checksum_verified_when_limit_is_at_an_inner_frame_end ... ok
+test decode::tests::reset_decompression ... ok
+test decode::tests::set_offset_boundaries ... ok
+test decode::tests::truncated_source_is_rejected ... ok
+test decode::tests::options ... ok
+test decode::tests::source_that_ends_at_the_last_frame_is_accepted ... ok
+test decode::tests::truncated_source_reads_as_unexpected_eof ... ok
+test decode::tests::decompress_until_upper_frame ... ok
+test encode::tests::flush_of_an_idle_frame_keeps_a_prefix_usable ... ok
+test decode::tests::checksum_verified_when_trailer_arrives_in_a_later_read ... ok
+test encode::tests::raw_encoder_forbids_compressed_frame_size_0 ... ok
+test encode::tests::raw_encoder_forbids_uncompressed_frame_size_0 ... ok
+test encode::tests::flush_delivers_input_without_ending_the_frame ... ok
+test seek_table::tests::from_reader_stops_at_the_end_of_the_table ... ok
+test encode::tests::checksum ... ok
+test decode::tests::decompress_within_offset_boundaries ... ok
+test encode::tests::raw_encoder_reset ... ok
+test decode::tests::decompress_everything_after_partly_decompression ... ok
+test decode::tests::small_reads_restore_everything ... ok
+test seek_table::tests::serializer_writes_nothing_into_an_empty_buffer ... ok
+test decode::tests::upper_frame_greater_than_lower_frame ... ok
+test decode::tests::checksum_verified_when_trailer_starts_at_input_buffer_boundary ... ok
+test tests::cycle_stand_alone_seek_table_foot ... ok
+test tests::cycle ... ok
+test seek_table::tests::frame_functions ... ok
+test decode::tests::set_offset_within_frame_continues_decompression ... ok
+test tests::cycle_std ... ok
+test tests::patch_cycle ... ok
+test decode::tests::seek_decoder ... ok
+test tests::cycle_stand_alone_seek_table_head ... ok
+test encode::tests::flush_finishes_a_pending_frame_ending ... ok
+test decode::tests::io_errors::interrupted_reads_are_retried_internally ... ok
+test decode::tests::io_errors::read_errors_never_lose_output ... ok
+test seek_table::tests::serde_cycle_with_short_reads ... ok
+test encode::tests::io_errors::write_errors_never_corrupt_the_archive ... ok
+test encode::tests::io_errors::interrupted_writes_are_retried_internally ... ok
+test encode::tests::io_errors::write_errors_around_frame_endings_never_corrupt_the_archive ... ok
+test tests::patch_cycle_custom_compressed_frame_size ... ok
+test seek_table::tests::deserialize_compatible_with_zstd_seekable ... ok
+test tests::cycle_custom_compressed_frame_size_std ... ok
+test tests::cycle_stand_alone_seek_table_foot_custom_compressed_frame_size ... ok
+test tests::cycle_custom_compressed_frame_size ... ok
+test seek_table::tests::serialize_compatible_with_zstd_seekable ... ok
+test seek_table::tests::serde_cycle ... ok
+test seek_table::tests::serialize ... ok
+test tests::cycle_custom_decompressed_frame_size_std ... ok
+test seek_table::tests::serde_cycle_std ... ok
+test tests::cycle_custom_decompressed_frame_size ... ok
+test tests::cycle_stand_alone_seek_table_foot_custom_decompressed_frame_size ... ok
+test tests::patch_cycle_custom_decompressed_frame_size ... ok
+
+test result: ok. 54 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.54s
+
