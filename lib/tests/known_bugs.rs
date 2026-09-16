@@ -157,7 +157,8 @@ fn read_all<S: zeekstd::Seekable>(
 /// the checksum field of its only entry.
 fn legacy_archive_with_table_checksum(content: &[u8]) -> (Vec<u8>, usize) {
     let mut cstream = zstd_safe::seekable::SeekableCStream::create();
-    cstream.init(3, true, u32::MAX).unwrap();
+    // A frame size of 0 selects the reference's maximum, 1 GiB
+    cstream.init(3, true, 0).unwrap();
     let mut out = vec![0; 1024 + content.len() * 2];
     let mut out_buf = OutBuffer::around(&mut out);
     let mut in_buf = InBuffer::around(content);

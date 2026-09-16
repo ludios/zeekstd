@@ -136,8 +136,8 @@ frame's compressed size, then flush the buffer and the writer.
 ### 16. Memory-mapped prefix files crash the CLI when truncated
 
 `Prefix::new` maps prefixes of 1 MiB and more by default. Truncating the file while it is mapped
-kills the process with SIGBUS. Reproduced: the test polls `/proc/<pid>/maps`, truncates the prefix,
-and sees signal 7.
+kills the process with SIGBUS. Reproduced: the test waits until the CLI blocks reading its stdin,
+which happens after the prefix is loaded, truncates the prefix, feeds input, and sees signal 7.
 
 Test: `truncating_a_mapped_prefix_does_not_crash` (Linux only).
 

@@ -220,23 +220,26 @@ fn decompress_zero_frame_archive() {
         .stdout(b"".as_slice());
 }
 
-/// Polls `/proc/<pid>/maps` until `path` shows up as a mapping, for at most five seconds.
+/// Waits until process `pid` blocks on a pipe, for at most five seconds. The CLI reads its input
+/// only after the prefix has been loaded, and its stdin is the only pipe it ever waits on, so this
+/// marks the point where the prefix is in use, however it is stored. The wait channel is named
+/// `anon_pipe_read`, `pipe_wait_readable` or `pipe_read` depending on the kernel.
 #[cfg(target_os = "linux")]
-fn wait_until_mapped(pid: u32, path: &Path) {
-    let maps = format!("/proc/{pid}/maps");
-    let needle = path.to_str().unwrap();
+fn wait_until_blocked_on_stdin(pid: u32) {
+    let wchan = format!("/proc/{pid}/wchan");
     let deadline = Instant::now() + Duration::from_secs(5);
     while Instant::now() < deadline {
-        if fs::read_to_string(&maps).is_ok_and(|m| m.contains(needle)) {
-            return;
+        match fs::read_to_string(&wchan) {
+            Ok(wait) if wait.contains("pipe") => return,
+            Ok(_) => thread::sleep(Duration::from_millis(20)),
+            Err(err) => panic!("process {pid} went away before reading stdin: {err}"),
         }
-        thread::sleep(Duration::from_millis(20));
     }
-    panic!("{needle} was not mapped within five seconds");
+    panic!("process {pid} did not start reading stdin within five seconds");
 }
 
-/// Finding 16: truncating a prefix file while the CLI has it memory-mapped must not kill the
-/// process. The prefix is above the 1 MiB threshold at which the CLI maps prefixes by default.
+/// Finding 16: truncating a prefix file after the CLI has loaded it must not kill the process.
+/// The prefix is above the 1 MiB threshold at which the CLI memory-maps prefixes by default.
 #[cfg(target_os = "linux")]
 #[test]
 #[ignore = "known unfixed: mapped prefix files are not protected against concurrent truncation"]
@@ -255,7 +258,7 @@ fn truncating_a_mapped_prefix_does_not_crash() {
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
-    wait_until_mapped(child.id(), &prefix);
+    wait_until_blocked_on_stdin(child.id());
     OpenOptions::new()
         .write(true)
         .open(&prefix)
