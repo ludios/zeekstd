@@ -308,7 +308,6 @@ fn flush_pushes_accepted_input_to_the_writer() {
 /// Finding 18: after zstd reports corruption, further reads without a reset must keep failing
 /// rather than hand out bytes decoded from an undefined context state.
 #[test]
-#[ignore = "known unfixed: the decoder neither poisons nor resets its context after a zstd error"]
 fn decoder_keeps_failing_after_a_zstd_error() {
     let content = b"hello storage, this is the content of the archive".repeat(20);
     let mut archive = seekable(&[&content, &content]);
