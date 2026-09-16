@@ -1,5 +1,5 @@
 // Model-output: Claude Fable 5.1
-//! Reproductions of the library findings in `known_unfixed_bugs.md`.
+//! Reproductions of the library findings in `ai-code-reviews/known_unfixed_bugs.md`.
 //!
 //! Each test asserts the behaviour the finding asks for. A test that is `#[ignore]`d still fails
 //! at HEAD: run `cargo test -p zeekstd --test known_bugs -- --ignored` to see which findings are

@@ -1,12 +1,12 @@
 # Known unfixed bugs
 
-Findings from the Codex review of 6038504 (`ai-code-reviews/astra.md`, numbering kept) that are
-still open at 977fc5c, checked on 2026-09-16. Every entry has a test that asserts the wanted
+Findings from the Codex review of 6038504 (`astra.md` in this directory, numbering kept) that are
+still open in the library at 977fc5c, checked on 2026-09-16. CLI-only findings, 4, 5, 6, 16, 17 and
+20 plus the CLI half of 12, are left out on purpose. Every entry has a test that asserts the wanted
 behaviour. Tests that fail today are marked `#[ignore]`; those of 14 and 18 pass here for the
 reasons given in their entries.
 
 - `lib/tests/known_bugs.rs`: `cargo test -p zeekstd --test known_bugs -- --ignored`
-- `cli/tests/integration/known_bugs.rs`: `cargo test -p zeekstd_cli -- --ignored known_bugs`
 
 When a fix lands, drop the `#[ignore]` from its test and delete the entry here.
 
@@ -15,44 +15,6 @@ the 16x overallocation of 7 (11b509a) and the decoder arithmetic of 14 (92c2102)
 Codex gave for 2 and 8 are kept as regression tests in `lib/tests/known_bugs.rs`.
 
 ## High
-
-### 4. CLI output that aliases the input destroys the source
-
-`checked_out_file` in `cli/src/command.rs` creates the output without checking whether it is the
-input. `zeekstd compress f -o f -f -q` truncates `f` through the output handle, reads nothing, and
-exits 0 having replaced `f` with the archive of an empty input. A hard link of the input behaves
-the same. Decompressing an archive onto itself truncates the archive before it is parsed.
-
-Tests: `compress_onto_itself_keeps_the_source`, `compress_onto_hard_link_keeps_the_source`,
-`decompress_onto_itself_keeps_the_archive`.
-
-Fix: compare the identity (device and inode) of every output with the input, prefix and seek table
-file before creating anything, independent of `--force`. Writing to a temporary file in the target
-directory and renaming it on success would also cover 5.
-
-### 5. CLI truncates existing outputs before the operation is validated
-
-In `Command::exec`, decompression creates its output before `Decompressor::new` opens the input,
-and compression creates the seek table file before the data file prompt and both before
-`Prefix::new` opens the prefix. A failed restore leaves the previous output empty; answering `y`
-for the seek table and `n` for the data file cancels the run but has already emptied the seek
-table; a missing prefix leaves an empty output behind.
-
-Tests: `failed_decompression_keeps_the_previous_output`,
-`cancelled_compression_keeps_the_existing_seek_table`, `missing_prefix_does_not_create_outputs`.
-
-Fix: open the input and the prefix, then resolve every overwrite prompt, and only then create
-outputs. Temporary files renamed on success keep the previous output on failure.
-
-### 6. CLI decompression never flushes stdout
-
-`Decompressor::decompress_into` ends with `write_all` and no `flush`. Rust's stdout is line
-buffered, so output without a trailing newline stays buffered until exit, where the flush error is
-dropped. Restoring a small archive to `/dev/full` exits 0 with nothing written.
-
-Test: `decompress_to_full_device_fails` (Linux only).
-
-Fix: flush the writer at the end of `decompress_into` and propagate the error.
 
 ### 3. `SeekTable::from_reader` parses unread buffer bytes as entries
 
@@ -103,15 +65,12 @@ Test: `corrupted_legacy_table_checksum_is_rejected`, which also checks the refer
 
 The reference implementation writes a 17-byte archive for empty input and decodes it to nothing.
 `frame_index_at` computes `num_frames() - 1` for the empty table, so decoding and lookups panic
-in debug builds and return a frame index error in release builds. `list_summarize` and
-`list_frames` in `cli/src/command.rs` do the same subtraction.
+in debug builds and return a frame index error in release builds.
 
-Tests: `zero_frame_archive_decodes_to_nothing`, `zero_frame_table_lookups_do_not_panic`,
-`list_zero_frame_archive`, `decompress_zero_frame_archive`.
+Tests: `zero_frame_archive_decodes_to_nothing`, `zero_frame_table_lookups_do_not_panic`.
 
 Fix: return 0 from `frame_index_at` for an empty table and make the decoder finish without reading
-when nothing is to be produced. Summarize from `size_comp` and `size_decomp` instead of the last
-frame.
+when nothing is to be produced.
 
 ### 14. Skippable header size overflows on 32-bit targets
 
@@ -132,28 +91,6 @@ Test: `flush_pushes_accepted_input_to_the_writer`.
 
 Fix: drain `ZSTD_e_flush` through `compress_stream2` until it reports 0, add the output to the
 frame's compressed size, then flush the buffer and the writer.
-
-### 16. Memory-mapped prefix files crash the CLI when truncated
-
-`Prefix::new` maps prefixes of 1 MiB and more by default. Truncating the file while it is mapped
-kills the process with SIGBUS. Reproduced: the test waits until the CLI blocks reading its stdin,
-which happens after the prefix is loaded, truncates the prefix, feeds input, and sees signal 7.
-
-Test: `truncating_a_mapped_prefix_does_not_crash` (Linux only).
-
-Fix: read the prefix into memory by default and make `--mmap-prefix` opt-in with a documented
-requirement that the file stays unchanged.
-
-### 17. Prefixes under 512 bytes fail
-
-`cli/src/compress.rs` and `cli/src/decompress.rs` derive the window log as `ilog2(len) + 1`,
-which is below zstd's minimum of 10 for prefixes of 1 to 511 bytes and fails with `Parameter is
-out of bound`. The failure happens after the output was created, see 5.
-
-Test: `small_prefix_round_trips`.
-
-Fix: clamp the value to zstd's window log bounds, or leave the decoder's limit alone and only raise
-the encoder's window log when the prefix needs more than the default.
 
 ### 18. Decoder reuse after a zstd error has no guard
 
@@ -176,23 +113,8 @@ Tests: `serializer_accepts_empty_buffer_foot`, `serializer_accepts_empty_buffer_
 
 Fix: return 0 for an empty buffer and bounds-check the descriptor write like the other fields.
 
-### 20. CLI frame range arithmetic overflows
-
-`cli/src/command.rs` adds `from_frame` and the frame count without checking.
-`list --from-frame 2 --num-frames 4294967295` panics in debug builds and wraps to a misleading
-"start exceeds end" error in release builds.
-
-Test: `list_frame_range_overflow_fails_cleanly`.
-
-Fix: `checked_add` and validate the range against the table before listing.
-
 ## Nits still present
 
-- `--no-progress` is parsed in `cli/src/args.rs` but never consulted; `progress_style` checks only
-  `quiet`.
-- The comment above `MMAP_THRESHOLD` says 128 MiB, the constant is 1 MiB.
-- `--to-frame` help advertises `last`, the parser accepts `end`. Test:
-  `to_frame_accepts_last_as_advertised`.
 - In `lib/src/lib.rs`, `cycle_custom_compressed_frame_size_std` calls `test_cycle` instead of
   `test_cycle_std`, and `cycle_stand_alone_seek_table_foot_custom_compressed_frame_size` uses
   `Format::Head`.
