@@ -1,0 +1,2353 @@
+OpenAI Codex v0.154.0
+--------
+workdir: /home/at/code/rust/zeekstd
+model: gpt-6-astra
+provider: openai
+approval: never
+sandbox: danger-full-access
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 01a0a7df-93c6-78c0-ada6-3cde960f1790
+--------
+user
+commit 7c7c70c
+exec
+/run/current-system/sw/bin/zsh -lc 'pwd; git status --short; for p in /AGENTS.override.md /AGENTS.md /home/AGENTS.override.md /home/AGENTS.md /home/at/AGENTS.override.md /home/at/AGENTS.md /home/at/code/AGENTS.override.md /home/at/code/AGENTS.md /home/at/code/rust/AGENTS.override.md /home/at/code/rust/AGENTS.md; do if [ -f "$p" ]; then echo "--- $p"; cat "$p"; fi; done; ls -la; git show --stat --oneline --decorate --no-renames 7c7c70c04a9dcef7920b502a33bc5bc5ccc1fad2' in /home/at/code/rust/zeekstd
+ succeeded in 0ms:
+/home/at/code/rust/zeekstd
+?? .claude/
+?? AGENTS.md
+?? CLAUDE.md
+?? Cargo.lock.zst
+?? ai-code-reviews/
+total 112
+drwxr-xr-x 1 at at   496 Sep 16 01:25 .
+drwxr-xr-x 1 at at    46 Sep 16 01:22 ..
+drwxr-xr-x 1 at at    18 Sep 16 01:25 .claude
+-rw-r----- 1 at at    10 Sep 11 18:29 .envrc
+drwxr-x--- 1 at at   238 Sep 16 01:40 .git
+drwxr-x--- 1 at at    44 Sep 12 01:16 .github
+-rw-r----- 1 at at    28 Sep 11 18:29 .gitignore
+drwxr-xr-x 1 at at    54 Sep 11 18:30 .stfolder
+-rw-r--r-- 1 at at    14 Sep 16 01:20 AGENTS.md
+-rw-r----- 1 at at  1531 Sep 11 18:29 CHANGELOG_CLI.md
+-rw-r----- 1 at at  3834 Sep 13 16:19 CHANGELOG_LIB.md
+-rw-r--r-- 1 at at  5895 Sep 16 01:20 CLAUDE.md
+-rw-r----- 1 at at 30894 Sep 11 18:29 Cargo.lock
+-rw-r----- 1 at at     0 Sep 11 19:17 Cargo.lock.zst
+-rw-r----- 1 at at   798 Sep 11 18:29 Cargo.toml
+-rw-r----- 1 at at  1290 Sep 11 18:29 LICENSE
+-rw-r----- 1 at at  6334 Sep 11 18:29 README.md
+-rw-r----- 1 at at   656 Sep 11 18:29 SECURITY.md
+drwxr-xr-x 1 at at   126 Sep 16 01:09 ai-code-reviews
+drwxr-x--- 1 at at    22 Sep 11 18:30 assets
+-rw-r----- 1 at at   919 Sep 11 18:29 build.nix
+drwxr-x--- 1 at at    54 Sep 11 18:30 cli
+-rw-r----- 1 at at   294 Sep 11 18:29 default.nix
+-rw-r----- 1 at at  2137 Sep 11 18:29 flake.lock
+-rw-r----- 1 at at  2271 Sep 11 18:29 flake.nix
+drwxr-x--- 1 at at    64 Sep 11 18:30 fuzz
+drwxr-x--- 1 at at    40 Sep 11 18:30 lib
+-rw-r----- 1 at at  7235 Sep 11 18:29 seekable_format.md
+drwxr-xr-x 1 at at   160 Sep 11 23:50 target
+7c7c70c (HEAD -> verify-frame-end) lib: verify frame trailer at the offset limit; error on truncated source and seek table size mismatch
+ lib/src/decode.rs | 313 ++++++++++++++++++++++++++++++++++++++++++++++++++----
+ lib/src/error.rs  |  33 ++++++
+ 2 files changed, 328 insertions(+), 18 deletions(-)
+
+exec
+/run/current-system/sw/bin/zsh -lc "cat AGENTS.md; nl -ba CLAUDE.md; find lib .claude -type f \\( -name 'AGENTS.md' -o -name 'AGENTS.override.md' -o -name 'CLAUDE.md' \\) -print; git show --format=fuller --no-ext-diff --no-renames 7c7c70c04a9dcef7920b502a33bc5bc5ccc1fad2 -- lib/src/decode.rs lib/src/error.rs" in /home/at/code/rust/zeekstd
+ succeeded in 0ms:
+See CLAUDE.md
+     1	# Environment
+     2	
+     3	Welcome. You're on a NixOS 26.05 machine where many things are already installed, including:
+     4	
+     5	ripgrep, ripgrep-all, google-chrome, curl-impersonate, gcc, go, rustc, cargo, patchelf, zip, unzip, zstd, dmesg, perf, hyperfine, codex, claude.
+     6	
+     7	Before starting or resuming work, check what `hostname` outputs.
+     8	
+     9	- If it ends in "clank", you're unable to hit production; run whatever commands you need.
+    10	- If anything any other hostname, stop and ask the user to edit this file.
+    11	
+    12	# Avoid consuming tokens in excess
+    13	
+    14	When verifying how something works, use e.g. `rg -B2 -A10` until you need the whole file.
+    15	
+    16	# The user isn't always right
+    17	
+    18	Post-training causes LLMs to usually go along with whatever the user asked for. This can lead to worse results if there was a better way, or the user missed something. So, if you notice anything which should cause the user to pursue a different line of thinking, please push back even to the point of stopping entirely. This repo is not an eval... it's real life.
+    19	
+    20	LLMs also generally assume that the user wants all the things that already exist, but this isn't always the case: sometimes there are odd leftovers.
+    21	
+    22	Always let the user know if there's an opportunity for simplification.
+    23	
+    24	# There's plenty of time
+    25	
+    26	If more external information is needed, think and keep iterating on web search queries to thoroughly check things. Tips: try site-specific searches e.g. site:github.com, reddit.com, news.ycombinator.com; try combinations of quoted items.
+    27	
+    28	If you can't fetch something, use google-chrome or curl_chrome146 on this machine.
+    29	
+    30	# Tracking AI authorship
+    31	
+    32	Files with any LLM-authored code (not counting mechanistic sed-like changes) begin with a comment like `// Model-output: <model name>`, one per model that contributed (e.g. "Claude Fable 5", "ChatGPT 5.5 Pro"); keep existing lines.
+    33	
+    34	# Code conventions
+    35	
+    36	When writing _any_ kind of code, including for the above:
+    37	
+    38	- Think about invariants and add asserts or domain-specific errors where they might prevent misbehavior.
+    39	- Except where very obvious or redundant, write a docstring describing each argument, and the return value when not void. What do they really represent?
+    40	- The "main" function goes at the end and depends on functions above, which depend on functions further above, etc.
+    41	- Scan the functions and generalize if that makes a good result; evict any deadbeats: humans with a small context window need to review and maintain this code.
+    42	- Abstraction boundaries are important. Comments should reflect the current abstraction and generally avoid talking about other things.
+    43	
+    44	Minutae:
+    45	
+    46	- Blank lines inside functions should only be used to separate different ideas or groups of steps.
+    47	- Use space-based alignment but only where it looks good: on adjacent lines with a very similar structure, add spaces after shorter identifiers (or the syntax to the right of them) to align things.
+    48	
+    49	# Programming thoughts
+    50	
+    51	We want a coherent, maintainable artifact that humans are happy with.
+    52	
+    53	A program can be:
+    54	- shorter.
+    55	- easier to read by a human.
+    56	- more correct around edge cases.
+    57	- faster than another which does the same thing.
+    58	- much easier to change when the requirements change.
+    59	
+    60	These are sometimes in conflict.
+    61	
+    62	Try writing a function in different ways and see which version is better.
+    63	
+    64	Sometimes a program can log or assert to generate interesting observations which feed into further development of the program. We do our own science on the outputs later to improve the program.
+    65	
+    66	When there are multiple good ways to implement something, especially involving state or the definition of a type: please ask the user. User loves AskUserQuestion.
+    67	
+    68	# After making changes
+    69	
+    70	Run tests and then automatically commit your changes with this commit template:
+    71	
+    72		subsystem: short one-line description; semicolon if multiple changes
+    73	
+    74		Model-output: model name e.g. Claude Fable 5
+    75	
+    76		<prompt>
+    77	
+    78		user prompt, verbatim
+    79	
+    80		AskUserQuestion question-answers, if any
+    81	
+    82		</prompt>
+    83	
+    84		<slop>
+    85	
+    86		model's response at the end of the dialogue, verbatim, in markdown format
+    87	
+    88		</slop>
+    89	
+    90	"(mid-turn)" if I added something mid-turn; multiple &lt;prompt>&lt;/prompt> &lt;slop>&lt;/slop> ... if the conversation had several real turns.
+    91	
+    92	If acting on a code review from Codex or some other agent, inside the beginning of &lt;slop>, add:
+    93	
+    94		<review model="model e.g. gpt-6-astra" reasoning_effort="effort e.g. xhigh">
+    95	
+    96		...
+    97	
+    98		</review>
+    99	
+   100	# Codex code review after each commit
+   101	
+   102	After each commit you make, get it reviewed by Codex (GPT-6-Astra at xhigh reasoning):
+   103	
+   104		codex review --commit <sha> -c model="gpt-6-astra" -c model_reasoning_effort="xhigh"
+   105	
+   106	Notes:
+   107	
+   108	- Codex is configured globally in `~/.codex/config.toml` (`approval_policy = "never"`, `sandbox_mode = "danger-full-access"`) to never ask for permission and run unsandboxed, so reviews and `codex exec` runs never block on prompts. If codex ever stalls waiting for approval, check that file.
+   109	- A review can take several minutes; run it in the background and continue if you have other work.
+   110	- Sol often nitpicks, or cares about bizarre, irrelevant edge cases. Ignore those findings; they should not stop you from making progress.
+   111	- For oversights that are true and interesting, fix them and make another commit (using the usual commit template). If you fixed nothing, say briefly in your reply why the findings didn't warrant changes.
+   112	- Do _not_ send that follow-up fix commit through another Codex review — the review cycle for a change ends after one round of findings and fixes. (Exception: the follow-up grew into something substantial beyond addressing the findings.)
+   113	- If you made several commits in a row, make sure the reviews cover all of them: either review each commit, or run one ranged review of the whole batch with `codex review --base <sha before your first commit>` plus the same `-c` options.
+   114	
+   115	# Thank you for your hard work on this project
+   116	
+   117	<3
+commit 7c7c70c04a9dcef7920b502a33bc5bc5ccc1fad2
+Author:     Ivan Kozik <ivan@ludios.org>
+AuthorDate: 2026-09-16 01:40:42 +0000
+Commit:     Ivan Kozik <ivan@ludios.org>
+CommitDate: 2026-09-16 01:40:42 +0000
+
+    lib: verify frame trailer at the offset limit; error on truncated source and seek table size mismatch
+    
+    Model-output: Claude Fable 5.1
+    
+    <prompt>
+    
+    ok, great. could you please fix that checksum-skip bug? see if you can unit test first
+    
+    I added a CLAUDE.md just now fwiw
+    
+    AskUserQuestion "How should the decoder report the two new failure cases: the source hitting EOF inside a frame, and a frame ending at a different decompressed position than its seek table entry says?" -> "New error kinds (Recommended)"
+    
+    AskUserQuestion "Should the fix also check, at every frame end zstd reports, that the decompressed position equals the seek table's frame end? This is what turns a wrong seek table (review finding 2, silent truncation or misaligned seeks) into an error." -> "Check every frame end (Recommended)"
+    
+    </prompt>
+    
+    <slop>
+    
+    **Fixed and committed on branch `verify-frame-end`.** The decoder now verifies every frame it decompresses to the end, and it errors instead of reporting success on a truncated source or on a seek table that disagrees with the frames.
+    
+    **The bug.** The decoder's loop stopped as soon as the requested number of bytes had been produced. When a frame's 4-byte checksum landed in a later read than its last content byte, zstd never saw the trailer, so a corrupted frame decoded with exit 0. With the CLI's 131075-byte input buffer that happened whenever a frame's payload filled the buffer exactly. With small reads it happened every time.
+    
+    **The fix** in [decode.rs](lib/src/decode.rs) and [error.rs](lib/src/error.rs), following your two answers:
+    
+    - The decoder tracks which frame the zstd context is in and whether that frame is finished. When the offset limit sits at a frame end, it keeps feeding input with no output room until zstd confirms the frame end, which is when the checksum gets checked.
+    - At every frame end it compares the decompressed position with the seek table entry and fails with the new `FrameSizeMismatch` error if they differ. A stalled drain, where zstd holds more data than the entry allows, fails the same way.
+    - A zero-byte read while more input is needed fails with the new `UnexpectedEof` error instead of spinning forever. That covers the review's finding 8 as a side effect.
+    - A limit inside a frame still skips that frame's checksum, as documented.
+    
+    **Tests written first.** All six failed on the old code and pass now: valid data with 1-byte reads consumes every trailer; a flipped byte is caught with 1-byte and 3-byte reads, with the limit at an inner frame end, and at the exact input-buffer boundary; a source cut inside the last frame errors; a table off by one byte in either direction errors.
+    
+    **Verification.** Workspace tests, no_std tests, doc tests, clippy pedantic, and fmt are clean. The release CLI rejects the 131,066-byte repro with "Restored data doesn't match checksum". The interop matrix from earlier gives identical results, and Meta's reference decoder still agrees with zeekstd on all library probes.
+    
+    **Codex review** (gpt-6-astra, xhigh): pending when this commit was made; the message is amended with the outcome afterwards.
+    
+    **Coordination.** Session zeekstd-47 is fixing the EOF spin on branch `eof-spin` and will rebase onto this commit, keeping only extra tests. Session zeekstd-68 is adding a `From<Error> for io::Error` in the same error.rs, so expect a small merge conflict there.
+    
+    Next step is a PR from `verify-frame-end`. I did not push.
+    
+    </slop>
+
+diff --git a/lib/src/decode.rs b/lib/src/decode.rs
+index d7ce1fc..dd07011 100644
+--- a/lib/src/decode.rs
++++ b/lib/src/decode.rs
+@@ -1,3 +1,4 @@
++// Model-output: Claude Fable 5.1
+ use alloc::vec;
+ use alloc::vec::Vec;
+ use zstd_safe::{DCtx, InBuffer, OutBuffer, ResetDirective};
+@@ -122,6 +123,11 @@ pub struct Decoder<'a, S> {
+     dctx: DCtx<'a>,
+     seek_table: SeekTable,
+     src: S,
++    /// Index of the frame the decompression context is in, or about to enter.
++    frame_idx: u32,
++    /// Whether the decompression context sits between frames, i.e. the last frame it saw was
++    /// consumed completely, trailer included.
++    frame_done: bool,
+     decomp_pos: u64,
+     offset: u64,
+     offset_limit: u64,
+@@ -175,6 +181,8 @@ impl<'a, S: Seekable> Decoder<'a, S> {
+             dctx: opts.dctx,
+             seek_table,
+             src: opts.src,
++            frame_idx: 0,
++            frame_done: true,
+             decomp_pos: 0,
+             offset,
+             offset_limit,
+@@ -191,12 +199,17 @@ impl<'a, S: Seekable> Decoder<'a, S> {
+     /// Call this repetetively to fill `buf` with decompressed data. Returns the number of bytes
+     /// written to `buf`. Decompression is finished when no more bytes are written to `buf`.
+     ///
++    /// Every frame that gets decompressed to its end is verified, i.e. its checksum if it has
++    /// one, and its decompressed size against the seek table. An offset limit inside a frame
++    /// skips the verification of that frame.
++    ///
+     /// If a `prefix` is passed, it will be referenced at the beginning of every frame.
+     /// Referencing a raw content prefix has almost no CPU nor memory cost.
+     ///
+     /// # Errors
+     ///
+-    /// If decompression fails or any parameter is invalid.
++    /// If decompression fails, the source ends inside a frame, a frame disagrees with its seek
++    /// table entry, or any parameter is invalid.
+     #[allow(clippy::missing_panics_doc)]
+     pub fn decompress_with_prefix<'b: 'a>(
+         &mut self,
+@@ -204,10 +217,10 @@ impl<'a, S: Seekable> Decoder<'a, S> {
+         prefix: Option<&'b [u8]>,
+     ) -> Result<usize> {
+         if self.read_compressed == 0 {
+-            let frame_idx = self.seek_table.frame_index_decomp(self.offset);
+-            let start_pos = self.seek_table.frame_start_comp(frame_idx)?;
++            self.frame_idx = self.seek_table.frame_index_decomp(self.offset);
++            let start_pos = self.seek_table.frame_start_comp(self.frame_idx)?;
+             self.src.set_offset(OffsetFrom::Start(start_pos))?;
+-            self.decomp_pos = self.seek_table.frame_start_decomp(frame_idx)?;
++            self.decomp_pos = self.seek_table.frame_start_decomp(self.frame_idx)?;
+             // Reference prefix at the beginning of decompression
+             if let Some(pref) = prefix {
+                 self.dctx.ref_prefix(pref)?;
+@@ -218,10 +231,22 @@ impl<'a, S: Seekable> Decoder<'a, S> {
+         }
+ 
+         let mut output_progress = 0;
+-        while self.offset < self.offset_limit && output_progress < buf.len() {
++        // Decompressed end of the frame the context is in, `None` past the last frame
++        let mut frame_end = self.seek_table.frame_end_decomp(self.frame_idx).ok();
++        loop {
++            // Stop once no more output is wanted, unless the frame that produced the last wanted
++            // byte still has its trailer to consume.
++            let output_wanted = self.offset < self.offset_limit && output_progress < buf.len();
++            if !output_wanted && !trailer_pending(self.frame_done, frame_end, self.decomp_pos) {
++                break;
++            }
++
+             if self.in_buf_pos == self.in_buf_limit {
+                 self.in_buf_limit = self.src.read(&mut self.in_buf)?;
+                 self.in_buf_pos = 0;
++                if self.in_buf_limit == 0 {
++                    return Err(Error::unexpected_eof());
++                }
+             }
+ 
+             let mut in_buffer = InBuffer::around(&self.in_buf[self.in_buf_pos..self.in_buf_limit]);
+@@ -231,21 +256,45 @@ impl<'a, S: Seekable> Decoder<'a, S> {
+                 OutBuffer::around(&mut self.out_buf[..limit])
+             } else {
+                 // Bytes we still need to decompress, capped at usize::MAX
+-                let remaining: usize = (self.offset_limit - self.decomp_pos)
++                let remaining: usize = self
++                    .offset_limit
++                    .saturating_sub(self.decomp_pos)
+                     .try_into()
+                     .unwrap_or(usize::MAX);
+-                let limit = buf.len().min(output_progress + remaining);
++                let limit = buf.len().min(output_progress.saturating_add(remaining));
+                 OutBuffer::around(&mut buf[output_progress..limit])
+             };
+ 
+             let in_len = self.in_buf_limit - self.in_buf_pos;
+-            while in_buffer.pos() < in_len && out_buffer.pos() < out_buffer.capacity() {
++            while in_buffer.pos() < in_len {
++                let pos = self.decomp_pos + out_buffer.pos() as u64;
++                if out_buffer.pos() == out_buffer.capacity()
++                    && !trailer_pending(self.frame_done, frame_end, pos)
++                {
++                    break;
++                }
++
++                let (in_before, out_before) = (in_buffer.pos(), out_buffer.pos());
+                 let n = self
+                     .dctx
+                     .decompress_stream(&mut out_buffer, &mut in_buffer)?;
++                // Given input and room for output, zstd always makes progress. The only call
++                // made without room is the trailer drain, so a stall means the frame holds more
++                // data than its seek table entry says.
++                if in_buffer.pos() == in_before && out_buffer.pos() == out_before {
++                    return Err(Error::frame_size_mismatch());
++                }
++
+                 // Frame end
+-                // TODO: chain when stable
+-                if n == 0 {
++                self.frame_done = n == 0;
++                if self.frame_done {
++                    let end = self.decomp_pos + out_buffer.pos() as u64;
++                    if frame_end != Some(end) {
++                        return Err(Error::frame_size_mismatch());
++                    }
++                    self.frame_idx += 1;
++                    frame_end = self.seek_table.frame_end_decomp(self.frame_idx).ok();
++                    // TODO: chain when stable
+                     if let Some(pref) = prefix {
+                         self.dctx
+                             .reset(ResetDirective::SessionOnly)
+@@ -270,6 +319,13 @@ impl<'a, S: Seekable> Decoder<'a, S> {
+     }
+ }
+ 
++/// Whether a decompression context that sits at decompressed position `pos` still has to consume
++/// the trailer of its current frame, which ends at `frame_end` (`None` past the last frame).
++/// `frame_done` tells whether the context is between frames.
++fn trailer_pending(frame_done: bool, frame_end: Option<u64>, pos: u64) -> bool {
++    !frame_done && frame_end == Some(pos)
++}
++
+ impl<S: Seekable> Decoder<'_, S> {
+     /// Decompresses data from the internal source.
+     ///
+@@ -351,6 +407,7 @@ impl<S: Seekable> Decoder<'_, S> {
+ 
+     fn reset_dctx(&mut self) {
+         self.read_compressed = 0;
++        self.frame_done = true;
+         self.dctx
+             .reset(ResetDirective::SessionOnly)
+             .expect("Resetting session never fails");
+@@ -580,30 +637,50 @@ impl<S: Seekable> std::io::Seek for Decoder<'_, S> {
+ 
+ #[cfg(test)]
+ mod tests {
+-    use crate::{BytesWrapper, EncodeOptions, FrameSizePolicy, tests::INPUT};
++    use alloc::string::ToString;
++
++    use crate::{
++        BytesWrapper, EncodeOptions, FrameSizePolicy, SEEK_TABLE_INTEGRITY_SIZE,
++        seek_table::Format, tests::INPUT,
++    };
+ 
+     use super::*;
+ 
+-    fn new_seekable(frame_size_policy: Option<FrameSizePolicy>) -> Vec<u8> {
++    /// Pseudo-random bytes that zstd stores in raw blocks, so flipping one of them can only be
++    /// noticed by the frame checksum.
++    fn noise(len: usize) -> Vec<u8> {
++        let mut x: u64 = 0x9E37_79B9_7F4A_7C15;
++        (0..len)
++            .map(|_| {
++                x ^= x << 13;
++                x ^= x >> 7;
++                x ^= x << 17;
++                (x >> 56) as u8
++            })
++            .collect()
++    }
++
++    /// Compresses `input` into a complete seekable (frames followed by a `Foot` seek table),
++    /// checking that the encoder's progress reports add up to what it wrote.
++    fn encode(input: &[u8], frame_size_policy: Option<FrameSizePolicy>, checksum: bool) -> Vec<u8> {
+         let mut seekable = vec![];
+         let mut encoder = EncodeOptions::new()
+             .frame_size_policy(frame_size_policy.unwrap_or_default())
++            .checksum_flag(checksum)
+             .into_raw_encoder()
+             .unwrap();
+ 
+-        let mut buf = vec![0; INPUT.len()];
++        let mut buf = vec![0; input.len().max(64)];
+ 
+         let mut in_progress = 0;
+         let mut out_progress = 0;
+-        while in_progress < INPUT.len() {
+-            let progress = encoder
+-                .compress(&INPUT.as_bytes()[in_progress..], &mut buf)
+-                .unwrap();
++        while in_progress < input.len() {
++            let progress = encoder.compress(&input[in_progress..], &mut buf).unwrap();
+             seekable.extend(&buf[..progress.out_progress()]);
+             in_progress += progress.in_progress();
+             out_progress += progress.out_progress();
+         }
+-        assert_eq!(in_progress, INPUT.len());
++        assert_eq!(in_progress, input.len());
+ 
+         loop {
+             let prog = encoder.end_frame(&mut buf).unwrap();
+@@ -628,6 +705,206 @@ mod tests {
+         seekable
+     }
+ 
++    fn new_seekable(frame_size_policy: Option<FrameSizePolicy>) -> Vec<u8> {
++        encode(INPUT.as_bytes(), frame_size_policy, false)
++    }
++
++    /// Serves at most `chunk` bytes per read, so that a frame trailer lands in a later read
++    /// than the data it protects.
++    struct ChunkedBytes<'a> {
++        inner: BytesWrapper<'a>,
++        chunk: usize,
++    }
++
++    impl Seekable for ChunkedBytes<'_> {
++        fn set_offset(&mut self, offset: OffsetFrom) -> Result<u64> {
++            self.inner.set_offset(offset)
++        }
++
++        fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
++            let len = buf.len().min(self.chunk);
++            self.inner.read(&mut buf[..len])
++        }
++
++        fn seek_table_integrity(
++            &mut self,
++            format: Format,
++        ) -> Result<[u8; SEEK_TABLE_INTEGRITY_SIZE]> {
++            self.inner.seek_table_integrity(format)
++        }
++    }
++
++    /// A decoder over `seekable` whose data reads return at most `chunk` bytes. The seek table
++    /// is parsed from the plain bytes, as the table parser does not cope with short reads yet.
++    fn chunked_decoder(seekable: &[u8], chunk: usize) -> Decoder<'static, ChunkedBytes<'_>> {
++        let st = SeekTable::from_seekable(&mut BytesWrapper::new(seekable)).unwrap();
++        let src = ChunkedBytes {
++            inner: BytesWrapper::new(seekable),
++            chunk,
++        };
++        DecodeOptions::new(src)
++            .seek_table(st)
++            .into_decoder()
++            .unwrap()
++    }
++
++    /// Decompresses everything the decoder is set up to produce, asking for at most `chunk`
++    /// bytes per call.
++    fn decode_all<S: Seekable>(decoder: &mut Decoder<'_, S>, chunk: usize) -> Result<Vec<u8>> {
++        let mut output = vec![];
++        let mut buf = vec![0; chunk];
++        loop {
++            let n = decoder.decompress(&mut buf)?;
++            if n == 0 {
++                return Ok(output);
++            }
++            output.extend_from_slice(&buf[..n]);
++        }
++    }
++
++    fn assert_checksum_error(result: Result<Vec<u8>>, context: &str) {
++        match result {
++            Ok(output) => panic!(
++                "corruption went unnoticed ({context}): got {} bytes",
++                output.len()
++            ),
++            Err(err) => assert!(
++                err.is_zstd() && err.to_string().contains("checksum"),
++                "expected a checksum error ({context}), got: {err}"
++            ),
++        }
++    }
++
++    #[test]
++    fn small_reads_restore_everything() {
++        let input = noise(2500);
++        let seekable = encode(&input, Some(FrameSizePolicy::Uncompressed(1000)), true);
++        let st = SeekTable::from_seekable(&mut BytesWrapper::new(&seekable)).unwrap();
++        assert_eq!(st.num_frames(), 3);
++
++        for chunk in [1, 3, 1000] {
++            let mut decoder = chunked_decoder(&seekable, chunk);
++            assert_eq!(decode_all(&mut decoder, 4096).unwrap(), input);
++            // Every frame, including its trailer, has been consumed
++            assert_eq!(decoder.read_compressed(), st.size_comp());
++        }
++    }
++
++    #[test]
++    fn checksum_verified_when_trailer_arrives_in_a_later_read() {
++        let input = noise(3000);
++        let mut seekable = encode(&input, Some(FrameSizePolicy::Uncompressed(1000)), true);
++        let st = SeekTable::from_seekable(&mut BytesWrapper::new(&seekable)).unwrap();
++        // Flip a payload byte of the last frame
++        let last = st.num_frames() - 1;
++        let payload = st.frame_start_comp(last).unwrap() as usize + 20;
++        seekable[payload] ^= 0xFF;
++
++        for chunk in [1, 3] {
++            let mut decoder = chunked_decoder(&seekable, chunk);
++            assert_checksum_error(
++                decode_all(&mut decoder, 4096),
++                &alloc::format!("{chunk}-byte reads"),
++            );
++        }
++    }
++
++    #[test]
++    fn checksum_verified_when_limit_is_at_an_inner_frame_end() {
++        let input = noise(3000);
++        let mut seekable = encode(&input, Some(FrameSizePolicy::Uncompressed(1000)), true);
++        let st = SeekTable::from_seekable(&mut BytesWrapper::new(&seekable)).unwrap();
++        // Flip a payload byte of the middle frame
++        let payload = st.frame_start_comp(1).unwrap() as usize + 20;
++        seekable[payload] ^= 0xFF;
++
++        let mut decoder = chunked_decoder(&seekable, 1);
++        decoder.set_upper_frame(1).unwrap();
++        assert_checksum_error(decode_all(&mut decoder, 4096), "upper frame 1");
++    }
++
++    #[test]
++    fn checksum_verified_when_trailer_starts_at_input_buffer_boundary() {
++        // Frame header (6 bytes) and raw block header (3 bytes) plus the payload fill the
++        // decoder's input buffer exactly, leaving the checksum for the next read.
++        let input = noise(DCtx::in_size() - 9);
++        let mut seekable = encode(&input, None, true);
++        let st = SeekTable::from_seekable(&mut BytesWrapper::new(&seekable)).unwrap();
++        assert_eq!(st.num_frames(), 1);
++        assert_eq!(
++            st.frame_size_comp(0).unwrap(),
++            DCtx::in_size() as u64 + 4,
++            "test setup: the checksum must start at the input buffer boundary"
++        );
++        seekable[100] ^= 0xFF;
++
++        let mut decoder = Decoder::new(BytesWrapper::new(&seekable)).unwrap();
++        // A buffer large enough to take the whole frame content in one call, like the CLI uses
++        assert_checksum_error(
++            decode_all(&mut decoder, input.len() + 1),
++            "input buffer boundary",
++        );
++    }
++
++    #[test]
++    fn truncated_source_is_rejected() {
++        let input = noise(2500);
++        let seekable = encode(&input, Some(FrameSizePolicy::Uncompressed(1000)), true);
++        let st = SeekTable::from_seekable(&mut BytesWrapper::new(&seekable)).unwrap();
++        let data_len = st.size_comp() as usize;
++
++        // Cut off the last checksum only, then part of the last frame's content
++        for cut in [4, 100] {
++            let src = BytesWrapper::new(&seekable[..data_len - cut]);
++            let mut decoder = DecodeOptions::new(src)
++                .seek_table(st.clone())
++                .into_decoder()
++                .unwrap();
++            let result = decode_all(&mut decoder, 4096);
++            assert!(
++                result.as_ref().is_err_and(Error::is_unexpected_eof),
++                "source cut by {cut} bytes: {:?}",
++                result.as_ref().map(Vec::len)
++            );
++        }
++    }
++
++    #[test]
++    fn seek_table_that_disagrees_with_frame_is_rejected() {
++        let input = noise(1500);
++        let seekable = encode(&input, Some(FrameSizePolicy::Uncompressed(1000)), true);
++        let st = SeekTable::from_seekable(&mut BytesWrapper::new(&seekable)).unwrap();
++        assert_eq!(st.num_frames(), 2);
++
++        let sizes = |i: u32| {
++            (
++                st.frame_size_comp(i).unwrap() as u32,
++                st.frame_size_decomp(i).unwrap() as u32,
++            )
++        };
++        let (c_size_0, d_size_0) = sizes(0);
++
++        // Declare the first frame one byte shorter, then one byte longer, than it is
++        for wrong_d_size_0 in [d_size_0 - 1, d_size_0 + 1] {
++            let mut wrong = SeekTable::new();
++            wrong.log_frame(c_size_0, wrong_d_size_0).unwrap();
++            for i in 1..st.num_frames() {
++                let (c_size, d_size) = sizes(i);
++                wrong.log_frame(c_size, d_size).unwrap();
++            }
++            let mut decoder = DecodeOptions::new(BytesWrapper::new(&seekable))
++                .seek_table(wrong)
++                .into_decoder()
++                .unwrap();
++            let result = decode_all(&mut decoder, 4096);
++            assert!(
++                result.as_ref().is_err_and(Error::is_frame_size_mismatch),
++                "first frame declared as {wrong_d_size_0} instead of {d_size_0} bytes: {:?}",
++                result.as_ref().map(Vec::len)
++            );
++        }
++    }
++
+     #[test]
+     fn options() {
+         let seekable = new_seekable(None);
+diff --git a/lib/src/error.rs b/lib/src/error.rs
+index e0186c4..11cdafd 100644
+--- a/lib/src/error.rs
++++ b/lib/src/error.rs
+@@ -1,3 +1,4 @@
++// Model-output: Claude Fable 5.1
+ use zstd_safe::{ErrorCode, get_error_name, zstd_sys::ZSTD_ErrorCode};
+ 
+ /// A `Result` alias where the `Err` case is `zeekstd::Error`.
+@@ -48,6 +49,28 @@ impl Error {
+         matches!(self.kind, Kind::InvalidFrameSizePolicy)
+     }
+ 
++    pub(crate) fn unexpected_eof() -> Self {
++        Self {
++            kind: Kind::UnexpectedEof,
++        }
++    }
++
++    /// Returns true if the seekable source ended inside a frame.
++    pub fn is_unexpected_eof(&self) -> bool {
++        matches!(self.kind, Kind::UnexpectedEof)
++    }
++
++    pub(crate) fn frame_size_mismatch() -> Self {
++        Self {
++            kind: Kind::FrameSizeMismatch,
++        }
++    }
++
++    /// Returns true if a frame's decompressed size differs from its seek table entry.
++    pub fn is_frame_size_mismatch(&self) -> bool {
++        matches!(self.kind, Kind::FrameSizeMismatch)
++    }
++
+     pub(crate) fn zstd(code: ZSTD_ErrorCode) -> Self {
+         let wrapped = 0_usize.wrapping_sub(code as usize);
+         Self {
+@@ -75,6 +98,10 @@ impl core::fmt::Display for Error {
+             Kind::OffsetOutOfRange => f.write_str("offset out of range"),
+             Kind::FrameIndexTooLarge => f.write_str("frame index too large"),
+             Kind::InvalidFrameSizePolicy => f.write_str("invalid frame size policy"),
++            Kind::UnexpectedEof => f.write_str("seekable source ended inside a frame"),
++            Kind::FrameSizeMismatch => {
++                f.write_str("frame's decompressed size differs from its seek table entry")
++            }
+             #[cfg(feature = "std")]
+             Kind::IO(err) => write!(f, "io error: {err}"),
+             Kind::Zstd(code) => f.write_str(get_error_name(*code)),
+@@ -119,6 +146,10 @@ enum Kind {
+     FrameIndexTooLarge,
+     /// The frame size policy is invalid.
+     InvalidFrameSizePolicy,
++    /// The seekable source ended inside a frame.
++    UnexpectedEof,
++    /// A frame's decompressed size differs from its seek table entry.
++    FrameSizeMismatch,
+     /// IO error.
+     #[cfg(feature = "std")]
+     IO(std::io::Error),
+@@ -135,6 +166,8 @@ impl core::fmt::Debug for Kind {
+             Self::OffsetOutOfRange => write!(f, "OffsetOutOfRange"),
+             Self::FrameIndexTooLarge => write!(f, "FrameIndexTooLarge"),
+             Self::InvalidFrameSizePolicy => write!(f, "InvalidFrameSizePolicy"),
++            Self::UnexpectedEof => write!(f, "UnexpectedEof"),
++            Self::FrameSizeMismatch => write!(f, "FrameSizeMismatch"),
+             #[cfg(feature = "std")]
+             Self::IO(arg0) => f.debug_tuple("IO").field(arg0).finish(),
+             Self::Zstd(c) => write!(f, "{}; code {}", zstd_safe::get_error_name(*c), c),
+
+exec
+/run/current-system/sw/bin/zsh -lc "hostname; find . -path './.git' -prune -o -path './target' -prune -o \\( -name 'AGENTS.override.md' -o -name 'AGENTS.md' -o -name 'CLAUDE.md' \\) -print; nl -ba lib/src/decode.rs | sed -n '1,430p'; cat Cargo.toml; cat lib/Cargo.toml" in /home/at/code/rust/zeekstd
+ succeeded in 0ms:
+xclank
+./CLAUDE.md
+./AGENTS.md
+     1	// Model-output: Claude Fable 5.1
+     2	use alloc::vec;
+     3	use alloc::vec::Vec;
+     4	use zstd_safe::{DCtx, InBuffer, OutBuffer, ResetDirective};
+     5	
+     6	use crate::{
+     7	    Error,
+     8	    error::Result,
+     9	    seek_table::SeekTable,
+    10	    seekable::{OffsetFrom, Seekable},
+    11	};
+    12	
+    13	/// Options that configure how data is decompressed.
+    14	pub struct DecodeOptions<'a, S> {
+    15	    dctx: DCtx<'a>,
+    16	    src: S,
+    17	    seek_table: Option<SeekTable>,
+    18	    lower_frame: Option<u32>,
+    19	    offset: Option<u64>,
+    20	    upper_frame: Option<u32>,
+    21	    offset_limit: Option<u64>,
+    22	}
+    23	
+    24	impl<'a, S> DecodeOptions<'a, S> {
+    25	    /// Creates a set of decoding options with default initial values. `src` contains the
+    26	    /// compressed data.
+    27	    ///
+    28	    /// # Panics
+    29	    ///
+    30	    /// If allocation of [`DCtx`] fails.
+    31	    pub fn new(src: S) -> Self {
+    32	        Self::with_dctx(src, DCtx::create())
+    33	    }
+    34	
+    35	    /// Tries to create new options.
+    36	    ///
+    37	    /// Returns `None` if allocation of [`DCtx`] fails.
+    38	    pub fn try_new(src: S) -> Option<Self> {
+    39	        let dctx = DCtx::try_create()?;
+    40	        Some(Self::with_dctx(src, dctx))
+    41	    }
+    42	
+    43	    /// Creates options with the given decompression context.
+    44	    pub fn with_dctx(src: S, dctx: DCtx<'a>) -> Self {
+    45	        Self {
+    46	            dctx,
+    47	            src,
+    48	            seek_table: None,
+    49	            lower_frame: None,
+    50	            offset: None,
+    51	            upper_frame: None,
+    52	            offset_limit: None,
+    53	        }
+    54	    }
+    55	
+    56	    /// Sets a [`DCtx`].
+    57	    pub fn dctx(mut self, dctx: DCtx<'a>) -> Self {
+    58	        self.dctx = dctx;
+    59	        self
+    60	    }
+    61	
+    62	    /// Sets the [`SeekTable`] for this options.
+    63	    ///
+    64	    /// If a seek table is set, it will be used directly during decompression instead of reading
+    65	    /// the seek table from the seekable `src`.
+    66	    pub fn seek_table(mut self, seek_table: SeekTable) -> Self {
+    67	        self.seek_table = Some(seek_table);
+    68	        self
+    69	    }
+    70	
+    71	    /// Sets the frame where decompression starts.
+    72	    ///
+    73	    /// Overrides the offset set with [`Self::offset`] if both are specified.
+    74	    pub fn lower_frame(mut self, index: u32) -> Self {
+    75	        self.lower_frame = Some(index);
+    76	        self
+    77	    }
+    78	
+    79	    /// Sets the last frame that is included in decompression.
+    80	    ///
+    81	    /// Overrides the offset limit set with [`Self::offset_limit`] if both are specified.
+    82	    pub fn upper_frame(mut self, index: u32) -> Self {
+    83	        self.upper_frame = Some(index);
+    84	        self
+    85	    }
+    86	
+    87	    /// Sets the decompression offset.
+    88	    ///
+    89	    /// The offset is the position in the decompressed data of the seekable source from which
+    90	    /// decompression starts.
+    91	    pub fn offset(mut self, offset: u64) -> Self {
+    92	        self.offset = Some(offset);
+    93	        self
+    94	    }
+    95	
+    96	    /// Sets a limit for the decompression offset.
+    97	    ///
+    98	    /// The limit is the position in the decompressed data of the seekable source at which
+    99	    /// decompresion stops.
+   100	    pub fn offset_limit(mut self, limit: u64) -> Self {
+   101	        self.offset_limit = Some(limit);
+   102	        self
+   103	    }
+   104	}
+   105	
+   106	impl<'a, S: Seekable> DecodeOptions<'a, S> {
+   107	    /// Builds a [`Decoder`] with the configuration.
+   108	    ///
+   109	    /// # Errors
+   110	    ///
+   111	    /// Fails if the decoder could not created.
+   112	    pub fn into_decoder(self) -> Result<Decoder<'a, S>> {
+   113	        Decoder::with_opts(self)
+   114	    }
+   115	}
+   116	
+   117	/// Decompresses data from a seekable source.
+   118	///
+   119	/// A decoder reads compressed data from a seekable source. By default, it decompresses
+   120	/// everything, from the first to the last frame. This can be changed via [`DecodeOptions`] or by
+   121	/// setting the offset after initialization.
+   122	pub struct Decoder<'a, S> {
+   123	    dctx: DCtx<'a>,
+   124	    seek_table: SeekTable,
+   125	    src: S,
+   126	    /// Index of the frame the decompression context is in, or about to enter.
+   127	    frame_idx: u32,
+   128	    /// Whether the decompression context sits between frames, i.e. the last frame it saw was
+   129	    /// consumed completely, trailer included.
+   130	    frame_done: bool,
+   131	    decomp_pos: u64,
+   132	    offset: u64,
+   133	    offset_limit: u64,
+   134	    in_buf: Vec<u8>,
+   135	    in_buf_pos: usize,
+   136	    in_buf_limit: usize,
+   137	    out_buf: Vec<u8>,
+   138	    read_compressed: u64,
+   139	}
+   140	
+   141	impl<'a, S: Seekable> Decoder<'a, S> {
+   142	    /// Creates a new `Decoder` with default parameters and `src` as source.
+   143	    ///
+   144	    /// This is equivalent to calling `DecodeOptions::new(src).into_decoder()`.
+   145	    ///
+   146	    /// # Errors
+   147	    ///
+   148	    /// Fails if the decoder could not be created.
+   149	    pub fn new(src: S) -> Result<Self> {
+   150	        Self::with_opts(DecodeOptions::new(src))
+   151	    }
+   152	
+   153	    /// Creates a new `Decoder` with the given [`DecodeOptions`].
+   154	    ///
+   155	    /// # Errors
+   156	    ///
+   157	    /// Fails if the decoder cannot be created.
+   158	    pub fn with_opts(mut opts: DecodeOptions<'a, S>) -> Result<Self> {
+   159	        let seek_table = opts
+   160	            .seek_table
+   161	            .map_or_else(|| SeekTable::from_seekable(&mut opts.src), Ok)?;
+   162	
+   163	        let offset = if let Some(index) = opts.lower_frame {
+   164	            seek_table.frame_start_decomp(index)?
+   165	        } else {
+   166	            opts.offset.unwrap_or(0)
+   167	        };
+   168	
+   169	        Self::check_offset(offset, &seek_table)?;
+   170	
+   171	        let offset_limit = if let Some(index) = opts.upper_frame {
+   172	            seek_table.frame_end_decomp(index)?
+   173	        } else {
+   174	            opts.offset_limit
+   175	                .unwrap_or_else(|| seek_table.size_decomp())
+   176	        };
+   177	
+   178	        Self::check_offset(offset_limit, &seek_table)?;
+   179	
+   180	        Ok(Self {
+   181	            dctx: opts.dctx,
+   182	            seek_table,
+   183	            src: opts.src,
+   184	            frame_idx: 0,
+   185	            frame_done: true,
+   186	            decomp_pos: 0,
+   187	            offset,
+   188	            offset_limit,
+   189	            in_buf: vec![0; DCtx::in_size()],
+   190	            in_buf_pos: 0,
+   191	            in_buf_limit: 0,
+   192	            out_buf: vec![0; DCtx::out_size()],
+   193	            read_compressed: 0,
+   194	        })
+   195	    }
+   196	
+   197	    /// Decompresses data from the internal source.
+   198	    ///
+   199	    /// Call this repetetively to fill `buf` with decompressed data. Returns the number of bytes
+   200	    /// written to `buf`. Decompression is finished when no more bytes are written to `buf`.
+   201	    ///
+   202	    /// Every frame that gets decompressed to its end is verified, i.e. its checksum if it has
+   203	    /// one, and its decompressed size against the seek table. An offset limit inside a frame
+   204	    /// skips the verification of that frame.
+   205	    ///
+   206	    /// If a `prefix` is passed, it will be referenced at the beginning of every frame.
+   207	    /// Referencing a raw content prefix has almost no CPU nor memory cost.
+   208	    ///
+   209	    /// # Errors
+   210	    ///
+   211	    /// If decompression fails, the source ends inside a frame, a frame disagrees with its seek
+   212	    /// table entry, or any parameter is invalid.
+   213	    #[allow(clippy::missing_panics_doc)]
+   214	    pub fn decompress_with_prefix<'b: 'a>(
+   215	        &mut self,
+   216	        buf: &mut [u8],
+   217	        prefix: Option<&'b [u8]>,
+   218	    ) -> Result<usize> {
+   219	        if self.read_compressed == 0 {
+   220	            self.frame_idx = self.seek_table.frame_index_decomp(self.offset);
+   221	            let start_pos = self.seek_table.frame_start_comp(self.frame_idx)?;
+   222	            self.src.set_offset(OffsetFrom::Start(start_pos))?;
+   223	            self.decomp_pos = self.seek_table.frame_start_decomp(self.frame_idx)?;
+   224	            // Reference prefix at the beginning of decompression
+   225	            if let Some(pref) = prefix {
+   226	                self.dctx.ref_prefix(pref)?;
+   227	            }
+   228	            // Trigger reading from src
+   229	            self.in_buf_pos = 0;
+   230	            self.in_buf_limit = 0;
+   231	        }
+   232	
+   233	        let mut output_progress = 0;
+   234	        // Decompressed end of the frame the context is in, `None` past the last frame
+   235	        let mut frame_end = self.seek_table.frame_end_decomp(self.frame_idx).ok();
+   236	        loop {
+   237	            // Stop once no more output is wanted, unless the frame that produced the last wanted
+   238	            // byte still has its trailer to consume.
+   239	            let output_wanted = self.offset < self.offset_limit && output_progress < buf.len();
+   240	            if !output_wanted && !trailer_pending(self.frame_done, frame_end, self.decomp_pos) {
+   241	                break;
+   242	            }
+   243	
+   244	            if self.in_buf_pos == self.in_buf_limit {
+   245	                self.in_buf_limit = self.src.read(&mut self.in_buf)?;
+   246	                self.in_buf_pos = 0;
+   247	                if self.in_buf_limit == 0 {
+   248	                    return Err(Error::unexpected_eof());
+   249	                }
+   250	            }
+   251	
+   252	            let mut in_buffer = InBuffer::around(&self.in_buf[self.in_buf_pos..self.in_buf_limit]);
+   253	            let mut out_buffer = if self.decomp_pos < self.offset {
+   254	                // Dummy decompression until we get to offset
+   255	                let limit = (self.offset - self.decomp_pos).min(self.out_buf.len() as u64) as usize;
+   256	                OutBuffer::around(&mut self.out_buf[..limit])
+   257	            } else {
+   258	                // Bytes we still need to decompress, capped at usize::MAX
+   259	                let remaining: usize = self
+   260	                    .offset_limit
+   261	                    .saturating_sub(self.decomp_pos)
+   262	                    .try_into()
+   263	                    .unwrap_or(usize::MAX);
+   264	                let limit = buf.len().min(output_progress.saturating_add(remaining));
+   265	                OutBuffer::around(&mut buf[output_progress..limit])
+   266	            };
+   267	
+   268	            let in_len = self.in_buf_limit - self.in_buf_pos;
+   269	            while in_buffer.pos() < in_len {
+   270	                let pos = self.decomp_pos + out_buffer.pos() as u64;
+   271	                if out_buffer.pos() == out_buffer.capacity()
+   272	                    && !trailer_pending(self.frame_done, frame_end, pos)
+   273	                {
+   274	                    break;
+   275	                }
+   276	
+   277	                let (in_before, out_before) = (in_buffer.pos(), out_buffer.pos());
+   278	                let n = self
+   279	                    .dctx
+   280	                    .decompress_stream(&mut out_buffer, &mut in_buffer)?;
+   281	                // Given input and room for output, zstd always makes progress. The only call
+   282	                // made without room is the trailer drain, so a stall means the frame holds more
+   283	                // data than its seek table entry says.
+   284	                if in_buffer.pos() == in_before && out_buffer.pos() == out_before {
+   285	                    return Err(Error::frame_size_mismatch());
+   286	                }
+   287	
+   288	                // Frame end
+   289	                self.frame_done = n == 0;
+   290	                if self.frame_done {
+   291	                    let end = self.decomp_pos + out_buffer.pos() as u64;
+   292	                    if frame_end != Some(end) {
+   293	                        return Err(Error::frame_size_mismatch());
+   294	                    }
+   295	                    self.frame_idx += 1;
+   296	                    frame_end = self.seek_table.frame_end_decomp(self.frame_idx).ok();
+   297	                    // TODO: chain when stable
+   298	                    if let Some(pref) = prefix {
+   299	                        self.dctx
+   300	                            .reset(ResetDirective::SessionOnly)
+   301	                            .expect("Resetting session never fails");
+   302	                        self.dctx.ref_prefix(pref)?;
+   303	                    }
+   304	                }
+   305	            }
+   306	
+   307	            self.decomp_pos += out_buffer.pos() as u64;
+   308	            self.in_buf_pos += in_buffer.pos();
+   309	            self.read_compressed += in_buffer.pos() as u64;
+   310	
+   311	            // Only add progress if we actually wrote something to buf
+   312	            if self.decomp_pos > self.offset {
+   313	                self.offset += out_buffer.pos() as u64;
+   314	                output_progress += out_buffer.pos();
+   315	            }
+   316	        }
+   317	
+   318	        Ok(output_progress)
+   319	    }
+   320	}
+   321	
+   322	/// Whether a decompression context that sits at decompressed position `pos` still has to consume
+   323	/// the trailer of its current frame, which ends at `frame_end` (`None` past the last frame).
+   324	/// `frame_done` tells whether the context is between frames.
+   325	fn trailer_pending(frame_done: bool, frame_end: Option<u64>, pos: u64) -> bool {
+   326	    !frame_done && frame_end == Some(pos)
+   327	}
+   328	
+   329	impl<S: Seekable> Decoder<'_, S> {
+   330	    /// Decompresses data from the internal source.
+   331	    ///
+   332	    /// Call this repetetively to fill `buf` with decompressed data. Returns the number of bytes
+   333	    /// written to `buf`. Decompression is finished when no more bytes are written to `buf`.
+   334	    ///
+   335	    /// # Errors
+   336	    ///
+   337	    /// If decompression fails or any parameter is invalid.
+   338	    ///
+   339	    /// # Examples
+   340	    ///
+   341	    /// ```
+   342	    /// # use zeekstd::{BytesWrapper, RawEncoder};
+   343	    /// # let mut encoder = RawEncoder::new()?;
+   344	    /// # let mut seekable = [0u8; 128];
+   345	    /// # let prog = encoder.compress(b"Hello, World!", &mut seekable)?;
+   346	    /// # let end_prog = encoder.end_frame(&mut seekable[prog.out_progress()..])?;
+   347	    /// # let mut ser = encoder.into_seek_table().into_serializer();
+   348	    /// # let mut n = prog.out_progress() + end_prog.out_progress();
+   349	    /// # n += ser.write_into(&mut seekable[n..]);
+   350	    /// # let seekable = BytesWrapper::new(&seekable[..n]);
+   351	    /// use zeekstd::Decoder;
+   352	    ///
+   353	    /// let mut decoder = Decoder::new(seekable)?;
+   354	    /// // Make sure `buf` is big enough to hold all decompressed data
+   355	    /// let mut buf = [0u8; 128];
+   356	    /// let mut progress = 0;
+   357	    ///
+   358	    /// // Decompress in a loop until no more bytes are written to `buf`
+   359	    /// loop {
+   360	    ///     let n = decoder.decompress(&mut buf[progress..])?;
+   361	    ///     if n == 0 {
+   362	    ///         break;
+   363	    ///     }
+   364	    ///     progress += n;
+   365	    /// }
+   366	    ///
+   367	    /// # assert_eq!(b"Hello, World!", &buf[..progress]);
+   368	    /// # Ok::<(), zeekstd::Error>(())
+   369	    /// ```
+   370	    pub fn decompress(&mut self, buf: &mut [u8]) -> Result<usize> {
+   371	        self.decompress_with_prefix(buf, None)
+   372	    }
+   373	
+   374	    /// Resets the current decompresion status.
+   375	    ///
+   376	    /// This resets the internal decompression context as well as decompression offset and limit.
+   377	    /// The next decompression operation after this function will start from the beginning of the
+   378	    /// seekable source.
+   379	    ///
+   380	    /// # Examples
+   381	    ///
+   382	    /// ```
+   383	    /// # use zeekstd::{BytesWrapper, RawEncoder};
+   384	    /// # let mut encoder = RawEncoder::new()?;
+   385	    /// # let mut seekable = [0u8; 128];
+   386	    /// # let prog = encoder.compress(b"Hello, World!", &mut seekable)?;
+   387	    /// # let end_prog = encoder.end_frame(&mut seekable[prog.out_progress()..])?;
+   388	    /// # let mut ser = encoder.into_seek_table().into_serializer();
+   389	    /// # let mut n = prog.out_progress() + end_prog.out_progress();
+   390	    /// # n += ser.write_into(&mut seekable[n..]);
+   391	    /// # let seekable = BytesWrapper::new(&seekable[..n]);
+   392	    /// use zeekstd::Decoder;
+   393	    ///
+   394	    /// let mut decoder = Decoder::new(seekable)?;
+   395	    /// decoder.reset();
+   396	    ///
+   397	    /// assert_eq!(decoder.read_compressed(), 0);
+   398	    /// assert_eq!(decoder.offset(), 0);
+   399	    /// assert_eq!(decoder.offset_limit(), decoder.seek_table().size_decomp());
+   400	    /// # Ok::<(), zeekstd::Error>(())
+   401	    /// ```
+   402	    pub fn reset(&mut self) {
+   403	        self.reset_dctx();
+   404	        self.offset = 0;
+   405	        self.offset_limit = self.seek_table().size_decomp();
+   406	    }
+   407	
+   408	    fn reset_dctx(&mut self) {
+   409	        self.read_compressed = 0;
+   410	        self.frame_done = true;
+   411	        self.dctx
+   412	            .reset(ResetDirective::SessionOnly)
+   413	            .expect("Resetting session never fails");
+   414	    }
+   415	
+   416	    /// Sets the decompression offset to the beginning of the frame at `index`.
+   417	    ///
+   418	    /// This has the same effect as calling [`Self::set_offset`] with the decompressed start
+   419	    /// position of the frame at `index`.
+   420	    ///
+   421	    /// # Errors
+   422	    ///
+   423	    /// When the the passed frame index is out of range.
+   424	    pub fn set_lower_frame(&mut self, index: u32) -> Result<u64> {
+   425	        let offset = self.seek_table.frame_start_decomp(index)?;
+   426	        self.set_offset(offset)?;
+   427	
+   428	        Ok(offset)
+   429	    }
+   430	
+[workspace]
+resolver = "2"
+members = ["cli", "lib", "fuzz"]
+
+[workspace.package]
+edition = "2024"
+license = "BSD-2-Clause"
+description = "Rust implementation of the Zstandard Seekable Format."
+homepage = "https://github.com/rorosen/zeekstd"
+repository = "https://github.com/rorosen/zeekstd"
+readme = "README.md"
+keywords = ["zstd", "zstandard", "compression", "zstd-seekable-format"]
+categories = ["compression"]
+
+[workspace.dependencies]
+zstd-safe = { version = "7.2.4", features = ["std"] }
+
+[workspace.lints.clippy]
+pedantic = { level = "deny", priority = -1 }
+cast_possible_wrap = "allow"
+cast_possible_truncation = "allow"
+cast-lossless = "allow"
+must_use_candidate = "allow"
+return_self_not_must_use = "allow"
+struct-excessive-bools = "allow"
+
+[profile.bench]
+codegen-units = 1
+opt-level = 3
+[package]
+name = "zeekstd"
+version = "0.6.2"
+description.workspace = true
+edition.workspace = true
+license.workspace = true
+keywords.workspace = true
+categories.workspace = true
+homepage.workspace = true
+repository.workspace = true
+readme.workspace = true
+
+[dependencies]
+zstd-safe = { workspace = true }
+
+[dev-dependencies]
+criterion = "0.8.1"
+proptest = "1.9.0"
+zstd = "0.13.3"
+
+[dev-dependencies.zstd-safe]
+workspace = true
+features = ["seekable"]
+
+[features]
+default = ["std"]
+
+std = ["zstd-safe/std"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[lints]
+workspace = true
+
+[[bench]]
+name = "compress"
+harness = false
+
+[[bench]]
+name = "decompress"
+harness = false
+
+exec
+/run/current-system/sw/bin/zsh -lc "nl -ba lib/src/decode.rs | sed -n '430,637p'; rg -n 'frame_index_decomp|frame_end_decomp|frame_start_decomp|log_frame|zero|empty|skipp' lib/src/seek_table.rs seekable_format.md; rg -n 'decompress|prefix|checksum|empty' lib/src/decode.rs | tail -65; cat lib/src/seekable.rs; cargo test --workspace" in /home/at/code/rust/zeekstd
+ succeeded in 4385ms:
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.43s
+     Running unittests src/lib.rs (target/debug/build/zeekstd/62e628579f984cae/out/zeekstd-62e628579f984cae)
+
+running 41 tests
+test decode::tests::seek_table_that_disagrees_with_frame_is_rejected ... ok
+test decode::tests::decompress_and_reset ... ok
+test decode::tests::decompress_last_frames ... ok
+test decode::tests::checksum_verified_when_limit_is_at_an_inner_frame_end ... ok
+test decode::tests::set_frame_boundaries ... ok
+test decode::tests::set_offset_boundaries ... ok
+test decode::tests::truncated_source_is_rejected ... ok
+test decode::tests::decompress_everything_after_partly_decompression ... ok
+test decode::tests::small_reads_restore_everything ... ok
+test decode::tests::decompress_within_offset_boundaries ... ok
+test encode::tests::raw_encoder_forbids_compressed_frame_size_0 ... ok
+test decode::tests::reset_decompression ... ok
+test decode::tests::decompress_until_upper_frame ... ok
+test decode::tests::options ... ok
+test decode::tests::upper_frame_greater_than_lower_frame ... ok
+test encode::tests::raw_encoder_forbids_uncompressed_frame_size_0 ... ok
+test encode::tests::checksum ... ok
+test decode::tests::checksum_verified_when_trailer_starts_at_input_buffer_boundary ... ok
+test encode::tests::raw_encoder_reset ... ok
+test decode::tests::seek_decoder ... ok
+test decode::tests::checksum_verified_when_trailer_arrives_in_a_later_read ... ok
+test decode::tests::set_offset_within_frame_continues_decompression ... ok
+test seek_table::tests::frame_functions ... ok
+test tests::patch_cycle ... ok
+test tests::cycle ... ok
+test tests::cycle_std ... ok
+test tests::cycle_stand_alone_seek_table_head ... ok
+test tests::cycle_stand_alone_seek_table_foot ... ok
+test tests::patch_cycle_custom_compressed_frame_size ... ok
+test seek_table::tests::deserialize_compatible_with_zstd_seekable ... ok
+test tests::cycle_custom_compressed_frame_size_std ... ok
+test tests::cycle_stand_alone_seek_table_foot_custom_compressed_frame_size ... ok
+test tests::cycle_custom_compressed_frame_size ... ok
+test seek_table::tests::serialize_compatible_with_zstd_seekable ... ok
+test seek_table::tests::serde_cycle ... ok
+test seek_table::tests::serialize ... ok
+test tests::cycle_custom_decompressed_frame_size_std ... ok
+test seek_table::tests::serde_cycle_std ... ok
+test tests::cycle_stand_alone_seek_table_foot_custom_decompressed_frame_size ... ok
+test tests::cycle_custom_decompressed_frame_size ... ok
+test tests::patch_cycle_custom_decompressed_frame_size ... ok
+
+test result: ok. 41 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.82s
+
+     Running unittests src/main.rs (target/debug/build/zeekstd_cli/4688492e1be19652/out/zeekstd-4688492e1be19652)
+
+running 11 tests
+test args::tests::decompress_end_frame ... ok
+test args::tests::num_frames_provides_correct_addiitonal_frames ... ok
+test args::tests::num_frames_greater_zero ... ok
+test args::tests::test_byte_value_from_str_non_numeric_value ... ok
+test args::tests::test_byte_value_from_str_no_unit ... ok
+test args::tests::test_byte_value_from_str_missing_value ... ok
+test args::tests::test_byte_value_from_str_invalid_unit ... ok
+test args::tests::test_byte_value_from_str_valid_gib ... ok
+test args::tests::test_byte_value_from_str_valid_b ... ok
+test args::tests::test_byte_value_from_str_valid_kib ... ok
+test args::tests::test_byte_value_from_str_valid_mib ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/integration/main.rs (target/debug/build/zeekstd_cli/c1eaa2c7d911c79e/out/integration-c1eaa2c7d911c79e)
+
+running 20 tests
+test do_not_create_out_file_if_input_file_does_not_exist ... ok
+test derive_out_name_when_compressing ... ok
+test derive_out_name_when_decompressing ... ok
+test do_not_overwrite_existing_output_file ... ok
+test do_not_overwrite_existing_seek_table_file ... ok
+test fail_to_derive_out_name_when_decompressing_with_unknown_extension ... ok
+test fail_to_derive_out_name_when_decompressing_without_extension ... ok
+test use_provided_output_path_during_decompression ... ok
+test decompress_frame_index_out_of_range ... ok
+test list_separate_seek_table ... ok
+test list_seekable ... ok
+test decompress_frames_separate_seek_table ... ok
+test decompress_between_offset_and_offset_limit ... ok
+test decompress_frames ... ok
+test force_overwrite_existing_file ... ok
+test cycle_with_separate_seek_table ... ok
+test cycle ... ok
+test cycle_stdin ... ok
+test cycle_stdout ... ok
+test cycle_stdin_to_stdout ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.98s
+
+   Doc-tests zeekstd
+
+running 41 tests
+test lib/src/decode.rs - decode::Decoder<'_,S> (line 555) - compile ... ok
+test lib/src/../../README.md - ReadmeDoctests (line 105) - compile ... ok
+test lib/src/../../README.md - ReadmeDoctests (line 84) - compile ... ok
+test lib/src/decode.rs - decode::Decoder<'_,S> (line 542) - compile ... ok
+test lib/src/decode.rs - decode::Decoder<'_,S> (line 529) - compile ... ok
+test lib/src/encode.rs - encode::EncodeOptions<'a>::into_encoder (line 194) - compile ... ok
+test lib/src/encode.rs - encode::Encoder<'_,W>::compress (line 684) - compile ... ok
+test lib/src/encode.rs - encode::Encoder (line 563) - compile ... ok
+test lib/src/encode.rs - encode::Encoder<'_,W>::finish (line 734) - compile ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::from_reader (line 449) - compile ... ok
+test lib/src/encode.rs - encode::EncodeOptions (line 102) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::from_seekable (line 326) - compile ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::from_seekable_format (line 367) - compile ... ok
+test lib/src/encode.rs - encode::RawEncoder<'_>::reset_seek_table (line 523) ... ok
+test lib/src/decode.rs - decode::Decoder<'_,S>::reset (line 382) ... ok
+test lib/src/encode.rs - encode::RawEncoder<'_>::seek_table (line 485) ... ok
+test lib/src/decode.rs - decode::Decoder<'_,S> (line 577) ... ok
+test lib/src/decode.rs - decode::Decoder<'_,S>::decompress (line 341) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_end_decomp (line 676) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_end_comp (line 647) ... ok
+test lib/src/encode.rs - encode::RawEncoder<'_>::compress (line 389) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_size_comp (line 705) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_index_comp (line 547) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_index_decomp (line 566) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_start_comp (line 589) ... ok
+test lib/src/encode.rs - encode::RawEncoder<'_>::end_frame (line 426) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_start_decomp (line 618) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_size_decomp (line 735) ... ok
+test lib/src/encode.rs - encode::RawEncoder (line 222) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::from_seekable (line 309) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::from_seekable_format (line 350) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::max_frame_size_comp (line 761) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::max_frame_size_decomp (line 786) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::log_frame (line 501) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::num_frames (line 529) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::into_format_serializer (line 891) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::into_serializer (line 867) ... ok
+test lib/src/seek_table.rs - seek_table::Serializer::reset (line 1011) ... ok
+test lib/src/seek_table.rs - seek_table::Serializer (line 939) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::size_decomp (line 839) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::size_comp (line 813) ... ok
+
+test result: ok. 41 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+all doctests ran in 0.22s; merged doctests compilation took 0.20s
+
+exec
+/run/current-system/sw/bin/zsh -lc "rg -n 'ZSTD_decompressStream\\(|hostageByte|noForwardProgress|ZSTDds_flush|case zdss' ~/.cargo/registry/src/*/zstd-sys-*/zstd/lib/decompress/zstd_decompress.c; sed -n '495,590p' lib/src/seek_table.rs; sed -n '640,700p' lib/src/seek_table.rs; rg -n -A12 -B8 'ref_prefix|cycle_stand_alone|decompress_with_prefix' lib/src/lib.rs; ls lib/tests fuzz/fuzz_targets; sed -n '136,159p' seekable_format.md" in /home/at/code/rust/zeekstd
+ succeeded in 0ms:
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.1.0+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:45: *  maximum allowed nb of calls to ZSTD_decompressStream()
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.1.0+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:268:    dctx->noForwardProgress = 0;
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.1.0+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:1952:        dctx->noForwardProgress = 0;
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.1.0+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2052:/* Calls ZSTD_decompressContinue() with the right parameters for ZSTD_decompressStream()
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.1.0+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2086:size_t ZSTD_decompressStream(ZSTD_DStream* zds, ZSTD_outBuffer* output, ZSTD_inBuffer* input)
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.1.0+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2116:        case zdss_init :
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.1.0+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2123:            zds->hostageByte = 0;
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.1.0+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2127:        case zdss_loadHeader :
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.1.0+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2273:        case zdss_read:
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.1.0+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2293:        case zdss_load:
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.1.0+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2321:        case zdss_flush:
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.1.0+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2357:        zds->noForwardProgress ++;
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.1.0+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2358:        if (zds->noForwardProgress >= ZSTD_NO_FORWARD_PROGRESS_MAX) {
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.1.0+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2359:            RETURN_ERROR_IF(op==oend, noForwardProgress_destFull, "");
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.1.0+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2360:            RETURN_ERROR_IF(ip==iend, noForwardProgress_inputEmpty, "");
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.1.0+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2364:        zds->noForwardProgress = 0;
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.1.0+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2369:                if (zds->hostageByte) {
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.1.0+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2376:                }   /* zds->hostageByte */
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.1.0+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2379:            if (!zds->hostageByte) { /* output not fully flushed; keep last byte as hostage; will be released when all output is flushed */
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.1.0+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2381:                zds->hostageByte=1;
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.1.0+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2405:    {   size_t const cErr = ZSTD_decompressStream(dctx, &output, &input);
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.0.16+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:45: *  maximum allowed nb of calls to ZSTD_decompressStream()
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.0.16+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:268:    dctx->noForwardProgress = 0;
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.0.16+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:1952:        dctx->noForwardProgress = 0;
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.0.16+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2052:/* Calls ZSTD_decompressContinue() with the right parameters for ZSTD_decompressStream()
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.0.16+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2086:size_t ZSTD_decompressStream(ZSTD_DStream* zds, ZSTD_outBuffer* output, ZSTD_inBuffer* input)
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.0.16+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2116:        case zdss_init :
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.0.16+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2123:            zds->hostageByte = 0;
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.0.16+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2127:        case zdss_loadHeader :
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.0.16+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2273:        case zdss_read:
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.0.16+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2293:        case zdss_load:
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.0.16+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2321:        case zdss_flush:
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.0.16+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2357:        zds->noForwardProgress ++;
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.0.16+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2358:        if (zds->noForwardProgress >= ZSTD_NO_FORWARD_PROGRESS_MAX) {
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.0.16+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2359:            RETURN_ERROR_IF(op==oend, noForwardProgress_destFull, "");
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.0.16+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2360:            RETURN_ERROR_IF(ip==iend, noForwardProgress_inputEmpty, "");
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.0.16+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2364:        zds->noForwardProgress = 0;
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.0.16+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2369:                if (zds->hostageByte) {
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.0.16+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2376:                }   /* zds->hostageByte */
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.0.16+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2379:            if (!zds->hostageByte) { /* output not fully flushed; keep last byte as hostage; will be released when all output is flushed */
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.0.16+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2381:                zds->hostageByte=1;
+/home/at/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.0.16+zstd.1.5.7/zstd/lib/decompress/zstd_decompress.c:2405:    {   size_t const cErr = ZSTD_decompressStream(dctx, &output, &input);
+    /// # Errors
+    ///
+    /// Fails if [`Self::num_frames()`] reaches [`SEEKABLE_MAX_FRAMES`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use zeekstd::SeekTable;
+    ///
+    /// let mut seek_table = SeekTable::new();
+    /// seek_table.log_frame(123, 456)?;
+    /// seek_table.log_frame(333, 444)?;
+    ///
+    /// assert_eq!(2, seek_table.num_frames());
+    /// # Ok::<(), zeekstd::Error>(())
+    /// ```
+    pub fn log_frame(&mut self, c_size: u32, d_size: u32) -> Result<()> {
+        if self.num_frames() >= SEEKABLE_MAX_FRAMES {
+            return Err(Error::frame_index_too_large());
+        }
+
+        let last = &self.entries[self.num_frames()];
+        self.entries.0.push(Entry {
+            c_offset: last.c_offset + c_size as u64,
+            d_offset: last.d_offset + d_size as u64,
+        });
+
+        Ok(())
+    }
+
+    /// The number of frames in the seek table.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use zeekstd::SeekTable;
+    ///
+    /// let mut seek_table = SeekTable::new();
+    /// seek_table.log_frame(123, 456)?;
+    ///
+    /// assert_eq!(1, seek_table.num_frames());
+    /// # Ok::<(), zeekstd::Error>(())
+    /// ```
+    pub fn num_frames(&self) -> u32 {
+        // Cast is always possible (max value SEEKABLE_MAX_FRAMES)
+        (self.entries.0.len() - 1) as u32
+    }
+
+    /// The frame index at the given compressed offset.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use zeekstd::SeekTable;
+    ///
+    /// let mut seek_table = SeekTable::new();
+    /// seek_table.log_frame(100, 200)?;
+    /// seek_table.log_frame(100, 200)?;
+    ///
+    /// assert_eq!(0, seek_table.frame_index_comp(99));
+    /// assert_eq!(1, seek_table.frame_index_comp(101));
+    /// # Ok::<(), zeekstd::Error>(())
+    /// ```
+    pub fn frame_index_comp(&self, offset: u64) -> u32 {
+        self.frame_index_at(offset, |i| self.entries[i].c_offset)
+    }
+
+    /// The frame index at the given decompressed offset.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use zeekstd::SeekTable;
+    ///
+    /// let mut seek_table = SeekTable::new();
+    /// seek_table.log_frame(100, 200)?;
+    /// seek_table.log_frame(100, 200)?;
+    ///
+    /// assert_eq!(0, seek_table.frame_index_decomp(199));
+    /// assert_eq!(1, seek_table.frame_index_decomp(201));
+    /// # Ok::<(), zeekstd::Error>(())
+    /// ```
+    pub fn frame_index_decomp(&self, offset: u64) -> u32 {
+        self.frame_index_at(offset, |i| self.entries[i].d_offset)
+    }
+
+    /// The start position of frame `index` in the compressed data.
+    ///
+    /// # Errors
+    ///
+    /// Fails if the frame index is out of range.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use zeekstd::SeekTable;
+    ///
+    /// # Errors
+    ///
+    /// Fails if the frame index is out of range.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use zeekstd::SeekTable;
+    ///
+    /// let mut seek_table = SeekTable::new();
+    /// seek_table.log_frame(100, 200)?;
+    /// seek_table.log_frame(100, 200)?;
+    ///
+    /// assert_eq!(100, seek_table.frame_end_comp(0).unwrap());
+    /// assert_eq!(200, seek_table.frame_end_comp(1).unwrap());
+    ///
+    /// assert!(seek_table.frame_end_comp(2).unwrap_err().is_frame_index_too_large());
+    /// # Ok::<(), zeekstd::Error>(())
+    /// ```
+    pub fn frame_end_comp(&self, index: u32) -> Result<u64> {
+        if index >= self.num_frames() {
+            return Err(Error::frame_index_too_large());
+        }
+
+        Ok(self.entries[index + 1].c_offset)
+    }
+
+    /// The end position of frame `index` in the decompressed data.
+    ///
+    /// # Errors
+    ///
+    /// Fails if the frame index is out of range.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use zeekstd::SeekTable;
+    ///
+    /// let mut seek_table = SeekTable::new();
+    /// seek_table.log_frame(100, 200)?;
+    /// seek_table.log_frame(100, 200)?;
+    ///
+    /// assert_eq!(200, seek_table.frame_end_decomp(0).unwrap());
+    /// assert_eq!(400, seek_table.frame_end_decomp(1).unwrap());
+    ///
+    /// assert!(seek_table.frame_end_decomp(2).unwrap_err().is_frame_index_too_large());
+    /// # Ok::<(), zeekstd::Error>(())
+    /// ```
+    pub fn frame_end_decomp(&self, index: u32) -> Result<u64> {
+        if index >= self.num_frames() {
+            return Err(Error::frame_index_too_large());
+        }
+
+        Ok(self.entries[index + 1].d_offset)
+    }
+
+    /// The compressed size of frame `index`.
+    ///
+    /// # Errors
+    ///
+128-                break;
+129-            }
+130-            output.extend(&buf[..n]);
+131-        }
+132-
+133-        assert_eq!(&INPUT.as_bytes(), &output);
+134-    }
+135-
+136:    fn test_cycle_stand_alone_seek_table(
+137-        frame_size_policy: Option<FrameSizePolicy>,
+138-        format: Format,
+139-    ) {
+140-        let mut seekable = vec![];
+141-        let mut opts = EncodeOptions::new();
+142-
+143-        if let Some(policy) = frame_size_policy {
+144-            opts = opts.frame_size_policy(policy);
+145-        }
+146-        let mut encoder = opts.into_raw_encoder().unwrap();
+147-
+148-        // Make buf small enough to compress/end frame/write seek table/decompress in multiple
+--
+246-        }
+247-
+248-        let wrapper = BytesWrapper::new(&patch);
+249-        let mut decoder = Decoder::new(wrapper).unwrap();
+250-        let mut output: Vec<u8> = Vec::with_capacity(new.len());
+251-
+252-        loop {
+253-            let n = decoder
+254:                .decompress_with_prefix(&mut buf, Some(old.as_bytes()))
+255-                .unwrap();
+256-            if n == 0 {
+257-                break;
+258-            }
+259-            output.extend(&buf[..n]);
+260-        }
+261-
+262-        assert_eq!(new.as_bytes(), &output);
+263-    }
+264-
+265-    #[cfg(feature = "std")]
+266-    fn test_cycle_std(frame_size_policy: Option<FrameSizePolicy>) {
+--
+292-    }
+293-
+294-    #[test]
+295-    fn patch_cycle() {
+296-        test_patch_cycle(None);
+297-    }
+298-
+299-    #[test]
+300:    fn cycle_stand_alone_seek_table_head() {
+301:        test_cycle_stand_alone_seek_table(None, Format::Head);
+302-    }
+303-
+304-    #[test]
+305:    fn cycle_stand_alone_seek_table_foot() {
+306:        test_cycle_stand_alone_seek_table(None, Format::Foot);
+307-    }
+308-
+309-    #[test]
+310-    #[cfg(feature = "std")]
+311-    fn cycle_std() {
+312-        test_cycle_std(None);
+313-    }
+314-
+315-    proptest! {
+316-        #[test]
+317-        fn cycle_custom_compressed_frame_size(frame_size in 1..1024u32) {
+318-            test_cycle(Some(FrameSizePolicy::Compressed(frame_size)));
+--
+331-
+332-        #[test]
+333-        #[cfg(feature = "std")]
+334-        fn cycle_custom_decompressed_frame_size_std(frame_size in 1..1024u32) {
+335-            test_cycle_std(Some(FrameSizePolicy::Uncompressed(frame_size)));
+336-        }
+337-
+338-        #[test]
+339:        fn cycle_stand_alone_seek_table_foot_custom_compressed_frame_size(frame_size in 1..1024u32) {
+340:            test_cycle_stand_alone_seek_table(Some(FrameSizePolicy::Compressed(frame_size)), Format::Head);
+341-        }
+342-
+343-        #[test]
+344:        fn cycle_stand_alone_seek_table_foot_custom_decompressed_frame_size(frame_size in 1..1024u32) {
+345:            test_cycle_stand_alone_seek_table(Some(FrameSizePolicy::Uncompressed(frame_size)), Format::Foot);
+346-        }
+347-
+348-        #[test]
+349-        fn patch_cycle_custom_compressed_frame_size(frame_size in 1..1024u32) {
+350-            test_patch_cycle(Some(FrameSizePolicy::Compressed(frame_size)));
+351-        }
+352-
+353-        #[test]
+354-        fn patch_cycle_custom_decompressed_frame_size(frame_size in 1..1024u32) {
+355-            test_patch_cycle(Some(FrameSizePolicy::Uncompressed(frame_size)));
+356-        }
+357-    }
+ls: cannot access 'lib/tests': No such file or directory
+fuzz/fuzz_targets:
+roundtrip_basic.rs
+roundtrip_seek.rs
+`Seek_Table_Entries` consists of `Number_Of_Frames` (one for each frame in the data, not including
+the seek table frame) entries of the following form, in sequence:
+
+| `Compressed_Size` | `Decompressed_Size` | `[Checksum]` |
+| ----------------- | ------------------- | ------------ |
+| 4 bytes           | 4 bytes             | 4 bytes      |
+
+**`Compressed_Size`**
+
+The compressed size of the frame. The cumulative sum of the `Compressed_Size` fields of frames `0`
+to `i` gives the offset in the compressed file of frame `i+1`.
+
+**`Decompressed_Size`**
+
+The size of the decompressed data contained in the frame. For skippable or otherwise empty frames,
+this value is 0.
+
+**`Checksum`**
+
+Not used in version `0.1.1`, created seek tables will never contain checksums. Legacy seek tables
+that have `Checksum_Flag` set and contain checksums can be decoded, but the checksums are ignored.
+The `Content_Checksum` field of regular [Zstandard frames] is used instead.
+
+## Version Changes
+
+exec
+/run/current-system/sw/bin/zsh -lc "sed -n '2086,2185p' ~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.0.16*/zstd/lib/decompress/zstd_decompress.c; sed -n '2265,2398p' ~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-sys-2.0.16*/zstd/lib/decompress/zstd_decompress.c; cat fuzz/fuzz_targets/roundtrip_seek.rs; rg -n -A30 -B4 'fn frame_index_at' lib/src/seek_table.rs; find .claude -type f -maxdepth 4 -print" in /home/at/code/rust/zeekstd
+ succeeded in 0ms:
+size_t ZSTD_decompressStream(ZSTD_DStream* zds, ZSTD_outBuffer* output, ZSTD_inBuffer* input)
+{
+    const char* const src = (const char*)input->src;
+    const char* const istart = input->pos != 0 ? src + input->pos : src;
+    const char* const iend = input->size != 0 ? src + input->size : src;
+    const char* ip = istart;
+    char* const dst = (char*)output->dst;
+    char* const ostart = output->pos != 0 ? dst + output->pos : dst;
+    char* const oend = output->size != 0 ? dst + output->size : dst;
+    char* op = ostart;
+    U32 someMoreWork = 1;
+
+    DEBUGLOG(5, "ZSTD_decompressStream");
+    assert(zds != NULL);
+    RETURN_ERROR_IF(
+        input->pos > input->size,
+        srcSize_wrong,
+        "forbidden. in: pos: %u   vs size: %u",
+        (U32)input->pos, (U32)input->size);
+    RETURN_ERROR_IF(
+        output->pos > output->size,
+        dstSize_tooSmall,
+        "forbidden. out: pos: %u   vs size: %u",
+        (U32)output->pos, (U32)output->size);
+    DEBUGLOG(5, "input size : %u", (U32)(input->size - input->pos));
+    FORWARD_IF_ERROR(ZSTD_checkOutBuffer(zds, output), "");
+
+    while (someMoreWork) {
+        switch(zds->streamStage)
+        {
+        case zdss_init :
+            DEBUGLOG(5, "stage zdss_init => transparent reset ");
+            zds->streamStage = zdss_loadHeader;
+            zds->lhSize = zds->inPos = zds->outStart = zds->outEnd = 0;
+#if defined(ZSTD_LEGACY_SUPPORT) && (ZSTD_LEGACY_SUPPORT>=1)
+            zds->legacyVersion = 0;
+#endif
+            zds->hostageByte = 0;
+            zds->expectedOutBuffer = *output;
+            ZSTD_FALLTHROUGH;
+
+        case zdss_loadHeader :
+            DEBUGLOG(5, "stage zdss_loadHeader (srcSize : %u)", (U32)(iend - ip));
+#if defined(ZSTD_LEGACY_SUPPORT) && (ZSTD_LEGACY_SUPPORT>=1)
+            if (zds->legacyVersion) {
+                RETURN_ERROR_IF(zds->staticSize, memory_allocation,
+                    "legacy support is incompatible with static dctx");
+                {   size_t const hint = ZSTD_decompressLegacyStream(zds->legacyContext, zds->legacyVersion, output, input);
+                    if (hint==0) zds->streamStage = zdss_init;
+                    return hint;
+            }   }
+#endif
+            {   size_t const hSize = ZSTD_getFrameHeader_advanced(&zds->fParams, zds->headerBuffer, zds->lhSize, zds->format);
+                if (zds->refMultipleDDicts && zds->ddictSet) {
+                    ZSTD_DCtx_selectFrameDDict(zds);
+                }
+                if (ZSTD_isError(hSize)) {
+#if defined(ZSTD_LEGACY_SUPPORT) && (ZSTD_LEGACY_SUPPORT>=1)
+                    U32 const legacyVersion = ZSTD_isLegacy(istart, iend-istart);
+                    if (legacyVersion) {
+                        ZSTD_DDict const* const ddict = ZSTD_getDDict(zds);
+                        const void* const dict = ddict ? ZSTD_DDict_dictContent(ddict) : NULL;
+                        size_t const dictSize = ddict ? ZSTD_DDict_dictSize(ddict) : 0;
+                        DEBUGLOG(5, "ZSTD_decompressStream: detected legacy version v0.%u", legacyVersion);
+                        RETURN_ERROR_IF(zds->staticSize, memory_allocation,
+                            "legacy support is incompatible with static dctx");
+                        FORWARD_IF_ERROR(ZSTD_initLegacyStream(&zds->legacyContext,
+                                    zds->previousLegacyVersion, legacyVersion,
+                                    dict, dictSize), "");
+                        zds->legacyVersion = zds->previousLegacyVersion = legacyVersion;
+                        {   size_t const hint = ZSTD_decompressLegacyStream(zds->legacyContext, legacyVersion, output, input);
+                            if (hint==0) zds->streamStage = zdss_init;   /* or stay in stage zdss_loadHeader */
+                            return hint;
+                    }   }
+#endif
+                    return hSize;   /* error */
+                }
+                if (hSize != 0) {   /* need more input */
+                    size_t const toLoad = hSize - zds->lhSize;   /* if hSize!=0, hSize > zds->lhSize */
+                    size_t const remainingInput = (size_t)(iend-ip);
+                    assert(iend >= ip);
+                    if (toLoad > remainingInput) {   /* not enough input to load full header */
+                        if (remainingInput > 0) {
+                            ZSTD_memcpy(zds->headerBuffer + zds->lhSize, ip, remainingInput);
+                            zds->lhSize += remainingInput;
+                        }
+                        input->pos = input->size;
+                        /* check first few bytes */
+                        FORWARD_IF_ERROR(
+                            ZSTD_getFrameHeader_advanced(&zds->fParams, zds->headerBuffer, zds->lhSize, zds->format),
+                            "First few bytes detected incorrect" );
+                        /* return hint input size */
+                        return (MAX((size_t)ZSTD_FRAMEHEADERSIZE_MIN(zds->format), hSize) - zds->lhSize) + ZSTD_blockHeaderSize;   /* remaining header bytes + next block header */
+                    }
+                    assert(ip != NULL);
+                    ZSTD_memcpy(zds->headerBuffer + zds->lhSize, ip, toLoad); zds->lhSize = hSize; ip += toLoad;
+                    break;
+            }   }
+
+            /* check for single-pass mode opportunity */
+                        }
+                        zds->inBuffSize = neededInBuffSize;
+                        zds->outBuff = zds->inBuff + zds->inBuffSize;
+                        zds->outBuffSize = neededOutBuffSize;
+            }   }   }
+            zds->streamStage = zdss_read;
+            ZSTD_FALLTHROUGH;
+
+        case zdss_read:
+            DEBUGLOG(5, "stage zdss_read");
+            {   size_t const neededInSize = ZSTD_nextSrcSizeToDecompressWithInputSize(zds, (size_t)(iend - ip));
+                DEBUGLOG(5, "neededInSize = %u", (U32)neededInSize);
+                if (neededInSize==0) {  /* end of frame */
+                    zds->streamStage = zdss_init;
+                    someMoreWork = 0;
+                    break;
+                }
+                if ((size_t)(iend-ip) >= neededInSize) {  /* decode directly from src */
+                    FORWARD_IF_ERROR(ZSTD_decompressContinueStream(zds, &op, oend, ip, neededInSize), "");
+                    assert(ip != NULL);
+                    ip += neededInSize;
+                    /* Function modifies the stage so we must break */
+                    break;
+            }   }
+            if (ip==iend) { someMoreWork = 0; break; }   /* no more input */
+            zds->streamStage = zdss_load;
+            ZSTD_FALLTHROUGH;
+
+        case zdss_load:
+            {   size_t const neededInSize = ZSTD_nextSrcSizeToDecompress(zds);
+                size_t const toLoad = neededInSize - zds->inPos;
+                int const isSkipFrame = ZSTD_isSkipFrame(zds);
+                size_t loadedSize;
+                /* At this point we shouldn't be decompressing a block that we can stream. */
+                assert(neededInSize == ZSTD_nextSrcSizeToDecompressWithInputSize(zds, (size_t)(iend - ip)));
+                if (isSkipFrame) {
+                    loadedSize = MIN(toLoad, (size_t)(iend-ip));
+                } else {
+                    RETURN_ERROR_IF(toLoad > zds->inBuffSize - zds->inPos,
+                                    corruption_detected,
+                                    "should never happen");
+                    loadedSize = ZSTD_limitCopy(zds->inBuff + zds->inPos, toLoad, ip, (size_t)(iend-ip));
+                }
+                if (loadedSize != 0) {
+                    /* ip may be NULL */
+                    ip += loadedSize;
+                    zds->inPos += loadedSize;
+                }
+                if (loadedSize < toLoad) { someMoreWork = 0; break; }   /* not enough input, wait for more */
+
+                /* decode loaded input */
+                zds->inPos = 0;   /* input is consumed */
+                FORWARD_IF_ERROR(ZSTD_decompressContinueStream(zds, &op, oend, zds->inBuff, neededInSize), "");
+                /* Function modifies the stage so we must break */
+                break;
+            }
+        case zdss_flush:
+            {
+                size_t const toFlushSize = zds->outEnd - zds->outStart;
+                size_t const flushedSize = ZSTD_limitCopy(op, (size_t)(oend-op), zds->outBuff + zds->outStart, toFlushSize);
+
+                op = op ? op + flushedSize : op;
+
+                zds->outStart += flushedSize;
+                if (flushedSize == toFlushSize) {  /* flush completed */
+                    zds->streamStage = zdss_read;
+                    if ( (zds->outBuffSize < zds->fParams.frameContentSize)
+                        && (zds->outStart + zds->fParams.blockSizeMax > zds->outBuffSize) ) {
+                        DEBUGLOG(5, "restart filling outBuff from beginning (left:%i, needed:%u)",
+                                (int)(zds->outBuffSize - zds->outStart),
+                                (U32)zds->fParams.blockSizeMax);
+                        zds->outStart = zds->outEnd = 0;
+                    }
+                    break;
+            }   }
+            /* cannot complete flush */
+            someMoreWork = 0;
+            break;
+
+        default:
+            assert(0);    /* impossible */
+            RETURN_ERROR(GENERIC, "impossible to reach");   /* some compilers require default to do something */
+    }   }
+
+    /* result */
+    input->pos = (size_t)(ip - (const char*)(input->src));
+    output->pos = (size_t)(op - (char*)(output->dst));
+
+    /* Update the expected output buffer for ZSTD_obm_stable. */
+    zds->expectedOutBuffer = *output;
+
+    if ((ip==istart) && (op==ostart)) {  /* no forward progress */
+        zds->noForwardProgress ++;
+        if (zds->noForwardProgress >= ZSTD_NO_FORWARD_PROGRESS_MAX) {
+            RETURN_ERROR_IF(op==oend, noForwardProgress_destFull, "");
+            RETURN_ERROR_IF(ip==iend, noForwardProgress_inputEmpty, "");
+            assert(0);
+        }
+    } else {
+        zds->noForwardProgress = 0;
+    }
+    {   size_t nextSrcSizeHint = ZSTD_nextSrcSizeToDecompress(zds);
+        if (!nextSrcSizeHint) {   /* frame fully decoded */
+            if (zds->outEnd == zds->outStart) {  /* output fully flushed */
+                if (zds->hostageByte) {
+                    if (input->pos >= input->size) {
+                        /* can't release hostage (not present) */
+                        zds->streamStage = zdss_read;
+                        return 1;
+                    }
+                    input->pos++;  /* release hostage */
+                }   /* zds->hostageByte */
+                return 0;
+            }  /* zds->outEnd == zds->outStart */
+            if (!zds->hostageByte) { /* output not fully flushed; keep last byte as hostage; will be released when all output is flushed */
+                input->pos--;   /* note : pos > 0, otherwise, impossible to finish reading last block */
+                zds->hostageByte=1;
+            }
+            return 1;
+        }  /* nextSrcSizeHint==0 */
+        nextSrcSizeHint += ZSTD_blockHeaderSize * (ZSTD_nextInputType(zds) == ZSTDnit_block);   /* preload header of next block */
+        assert(zds->inPos <= nextSrcSizeHint);
+        nextSrcSizeHint -= zds->inPos;   /* part already loaded*/
+        return nextSrcSizeHint;
+    }
+}
+
+size_t ZSTD_decompressStream_simpleArgs (
+                            ZSTD_DCtx* dctx,
+                            void* dst, size_t dstCapacity, size_t* dstPos,
+                      const void* src, size_t srcSize, size_t* srcPos)
+{
+    ZSTD_outBuffer output;
+    ZSTD_inBuffer  input;
+#![no_main]
+
+use libfuzzer_sys::fuzz_target;
+use std::io::{Read, Write};
+use zeekstd::{BytesWrapper, Decoder, EncodeOptions};
+
+fuzz_target!(|data: &[u8]| {
+    let (offset0, data) = if let Some(x) = data.split_at_checked(4) {
+        x
+    } else {
+        return;
+    };
+    let offset0 = u32::from_le_bytes(offset0.try_into().unwrap()) as usize;
+    let (offset1, data) = if let Some(x) = data.split_at_checked(4) {
+        x
+    } else {
+        return;
+    };
+    let offset1 = u32::from_le_bytes(offset1.try_into().unwrap()) as usize;
+    if data.is_empty() {
+        return;
+    }
+
+    let mut compressed: Vec<u8> = Vec::new();
+    {
+        let mut encoder = EncodeOptions::new()
+            .frame_size_policy(zeekstd::FrameSizePolicy::Uncompressed(100))
+            .into_encoder(&mut compressed)
+            .unwrap();
+        encoder.write_all(data).unwrap();
+        encoder.finish().unwrap();
+    }
+
+    for offset in [offset0, offset1] {
+        let offset = offset % data.len();
+        let mut decoder = Decoder::new(BytesWrapper::new(&compressed)).unwrap();
+        decoder.set_offset(offset as u64).unwrap();
+        let mut decompressed = Vec::new();
+        decoder.read_to_end(&mut decompressed).unwrap();
+
+        assert_eq!(&data[offset..], &decompressed);
+    }
+});
+910-            format,
+911-        }
+912-    }
+913-
+914:    fn frame_index_at(&self, offset: u64, offset_at: impl Fn(u32) -> u64) -> u32 {
+915-        if offset >= offset_at(self.num_frames()) {
+916-            return self.num_frames() - 1;
+917-        }
+918-
+919-        let mut low = 0;
+920-        let mut high = self.num_frames();
+921-
+922-        while low + 1 < high {
+923-            let mid = low.midpoint(high);
+924-            if offset_at(mid) <= offset {
+925-                low = mid;
+926-            } else {
+927-                high = mid;
+928-            }
+929-        }
+930-
+931-        low
+932-    }
+933-}
+934-
+935-/// A serializable, immutable form of a [`SeekTable`].
+936-///
+937-/// # Examples
+938-///
+939-/// ```
+940-/// use zeekstd::SeekTable;
+941-///
+942-/// let mut seek_table = SeekTable::new();
+943-/// seek_table.log_frame(123, 456)?;
+944-/// seek_table.log_frame(333, 444)?;
+.claude/worktrees/error-recovery/.git
+.claude/worktrees/error-recovery/.github/renovate.json
+.claude/worktrees/error-recovery/assets/dickens.txt
+.claude/worktrees/error-recovery/cli/Cargo.toml
+.claude/worktrees/error-recovery/cli/README.md
+.claude/worktrees/error-recovery/fuzz/.gitignore
+.claude/worktrees/error-recovery/fuzz/Cargo.toml
+.claude/worktrees/error-recovery/lib/Cargo.toml
+.claude/worktrees/error-recovery/.envrc
+.claude/worktrees/error-recovery/.gitignore
+.claude/worktrees/error-recovery/CHANGELOG_CLI.md
+.claude/worktrees/error-recovery/CHANGELOG_LIB.md
+.claude/worktrees/error-recovery/Cargo.lock
+.claude/worktrees/error-recovery/Cargo.toml
+.claude/worktrees/error-recovery/LICENSE
+.claude/worktrees/error-recovery/README.md
+.claude/worktrees/error-recovery/SECURITY.md
+.claude/worktrees/error-recovery/build.nix
+.claude/worktrees/error-recovery/default.nix
+.claude/worktrees/error-recovery/flake.lock
+.claude/worktrees/error-recovery/flake.nix
+.claude/worktrees/error-recovery/seekable_format.md
+.claude/worktrees/error-recovery/target/CACHEDIR.TAG
+.claude/worktrees/error-recovery/target/.rustc_info.json
+
+exec
+/run/current-system/sw/bin/zsh -lc "ls target/debug/deps/libzeekstd* target/debug/deps/libzstd*; sed -n '130,199p' lib/src/lib.rs; rg -n 'pub fn (compress|end_frame|flush)|checksum_flag|ref_prefix' lib/src/encode.rs | head -40; git status --short" in /home/at/code/rust/zeekstd
+ succeeded in 0ms:
+zsh:1: no matches found: target/debug/deps/libzeekstd*
+            output.extend(&buf[..n]);
+        }
+
+        assert_eq!(&INPUT.as_bytes(), &output);
+    }
+
+    fn test_cycle_stand_alone_seek_table(
+        frame_size_policy: Option<FrameSizePolicy>,
+        format: Format,
+    ) {
+        let mut seekable = vec![];
+        let mut opts = EncodeOptions::new();
+
+        if let Some(policy) = frame_size_policy {
+            opts = opts.frame_size_policy(policy);
+        }
+        let mut encoder = opts.into_raw_encoder().unwrap();
+
+        // Make buf small enough to compress/end frame/write seek table/decompress in multiple
+        // steps
+        let mut buf = vec![0; INPUT.len() / 500];
+
+        let mut in_progress = 0;
+        while in_progress < INPUT.len() {
+            let progress = encoder
+                .compress(&INPUT.as_bytes()[in_progress..], &mut buf)
+                .unwrap();
+            seekable.extend(&buf[..progress.out_progress()]);
+            in_progress += progress.in_progress();
+        }
+
+        loop {
+            let prog = encoder.end_frame(&mut buf).unwrap();
+            seekable.extend(&buf[..prog.out_progress()]);
+            if prog.data_left() == 0 {
+                break;
+            }
+        }
+
+        let mut ser = encoder.into_seek_table().into_format_serializer(format);
+        let mut seek_table = Vec::with_capacity(ser.encoded_len());
+        loop {
+            let n = ser.write_into(&mut buf);
+            if n == 0 {
+                break;
+            }
+            seek_table.extend(&buf[..n]);
+        }
+
+        assert_eq!(seek_table.len(), ser.encoded_len());
+
+        let mut wrapper = BytesWrapper::new(&seek_table);
+        let seek_table = SeekTable::from_seekable_format(&mut wrapper, format).unwrap();
+
+        let wrapper = BytesWrapper::new(&seekable);
+        let mut decoder = DecodeOptions::new(wrapper)
+            .seek_table(seek_table)
+            .into_decoder()
+            .unwrap();
+        let mut output = Vec::with_capacity(INPUT.len());
+
+        loop {
+            let n = decoder.decompress(&mut buf).unwrap();
+            if n == 0 {
+                break;
+            }
+            output.extend(&buf[..n]);
+        }
+
+        assert_eq!(&INPUT.as_bytes(), &output);
+106:///     .checksum_flag(false)
+115:    checksum_flag: bool,
+148:            checksum_flag: false,
+166:    pub fn checksum_flag(mut self, flag: bool) -> Self {
+167:        self.checksum_flag = flag;
+172:    pub fn compression_level(mut self, level: CompressionLevel) -> Self {
+200:    ///     .checksum_flag(true)
+291:            .set_parameter(CParameter::ChecksumFlag(opts.checksum_flag))?;
+318:    pub fn compress_with_prefix<'b: 'a>(
+343:                    self.cctx.ref_prefix(pref)?;
+405:    pub fn compress(&mut self, input: &[u8], output: &mut [u8]) -> Result<CompressionProgress> {
+445:    pub fn end_frame(&mut self, output: &mut [u8]) -> Result<EpilogueProgress> {
+648:    pub fn compress_with_prefix<'b: 'a>(
+699:    pub fn compress(&mut self, buf: &[u8]) -> Result<usize> {
+711:    pub fn end_frame(&mut self) -> Result<usize> {
+868:            .checksum_flag(true)
+?? .claude/
+?? AGENTS.md
+?? CLAUDE.md
+?? Cargo.lock.zst
+?? ai-code-reviews/
+
+exec
+/run/current-system/sw/bin/zsh -lc "find target/debug -name 'libzeekstd*.rlib' -o -name 'libzstd_safe*.rlib' -o -name 'libzstd-*.rlib'; rg -n 'fn compress\\(|pub fn compress2|compress_bound' ~/.cargo/registry/src/*/zstd-safe-7.2.4/src/lib.rs | head -15; cat .gitignore; cat ~/.cargo/config.toml 2>/dev/null" in /home/at/code/rust/zeekstd
+ exited 1 in 0ms:
+target/debug/build/zstd-safe/a11cb377963e8db9/out/libzstd_safe-a11cb377963e8db9.rlib
+target/debug/build/zstd-safe/087a328bfa96eb07/out/libzstd_safe-087a328bfa96eb07.rlib
+target/debug/build/zeekstd/f7330298666fda69/out/libzeekstd-f7330298666fda69.rlib
+target/debug/build/zeekstd/9f9a067407ea69e5/out/libzeekstd-9f9a067407ea69e5.rlib
+target/debug/build/zeekstd/a4b9ae87ed377971/out/libzeekstd-a4b9ae87ed377971.rlib
+target/debug/build/zstd/7383bb9ea5be9472/out/libzstd-7383bb9ea5be9472.rlib
+target/debug/libzeekstd.rlib
+218:pub fn compress_bound(src_size: usize) -> usize {
+280:    pub fn compress2<C: WriteBuf + ?Sized>(
+2325:pub fn decompress_bound(data: &[u8]) -> Result<u64, ErrorCode> {
+**/target/
+result*
+.direnv/
+
+exec
+/run/current-system/sw/bin/zsh -lc 'tmp=$(mktemp -d /tmp/zeekstd-review-XXXXXX); echo "$tmp"; mkdir "$tmp/src"; cat > "$tmp/Cargo.toml" <<'"'EOF'
+[package]
+name = \"zeekstd-review-probe\"
+version = \"0.1.0\"
+edition = \"2024\"
+[dependencies]
+zeekstd = { path = \"/home/at/code/rust/zeekstd/lib\" }
+zstd-safe = \"7.2.4\"
+EOF
+cat > \""'$tmp/src/main.rs" <<'"'EOF'
+// Model-output: OpenAI Codex
+use std::io::{self, Cursor, Read, Seek, SeekFrom, Write};
+use zeekstd::{DecodeOptions, Decoder, EncodeOptions, SeekTable};
+struct Chunked { inner: Cursor<Vec<u8>>, chunk: usize }
+impl Read for Chunked {
+    fn read(&mut self, dst: &mut [u8]) -> io::Result<usize> {
+        let n = dst.len().min(self.chunk);
+        self.inner.read(&mut dst[..n])
+    }
+}
+impl Seek for Chunked {
+    fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> { self.inner.seek(pos) }
+}
+fn next(x: &mut u64) -> u64 { *x "'^= *x << 13; *x ''^= *x >> 7; *x ''^= *x << 17; *x }
+fn compressed(data: &[u8], checksum: bool, streaming: bool) -> Vec<u8> {
+    if streaming {
+        let mut out = vec![];
+        let mut enc = EncodeOptions::new().checksum_flag(checksum).into_encoder(&mut out).unwrap();
+        enc.write_all(data).unwrap(); enc.finish().unwrap();
+        let st = SeekTable::from_seekable(&mut Cursor::new(&out)).unwrap();
+        out.truncate(st.size_comp() as usize);
+        out
+    } else {
+        let mut ctx = zstd_safe::CCtx::create();
+        ctx.set_parameter(zstd_safe::CParameter::ChecksumFlag(checksum)).unwrap();
+        let mut out = vec![0; zstd_safe::compress_bound(data.len())];
+        let n = ctx.compress2(&mut out[..], data).unwrap(); out.truncate(n); out
+    }
+}
+fn check(dec: &mut Decoder<'"'_, Chunked>, plain: &[u8], start: usize, end: usize, output_chunk: usize) {
+    dec.set_offset(start as u64).unwrap(); dec.set_offset_limit(end as u64).unwrap();
+    let mut output = vec"'![]; let mut buf = vec![0; output_chunk];
+    for _ in 0..=plain.len()+10 {
+        let n = dec.decompress(&mut buf).unwrap();
+        if n == 0 { assert_eq!(output, plain[start..end], "start={start} end={end} chunk={output_chunk}"); return; }
+        output.extend_from_slice(&buf[..n]);
+    }
+    panic!("loop");
+}
+fn main() {
+    let mut x = 1u64;
+    for case in 0..160 {
+        let mut source = vec![]; let mut plain = vec![]; let mut table = SeekTable::new(); let mut bounds = vec![0];
+        for frame in 0..5 {
+            if frame % 2 == 1 {
+                let count = (next(&mut x) % 10) as usize;
+                let mut skip = vec![0x50, 0x2a, 0x4d, 0x18];
+                skip.extend_from_slice(&(count as u32).to_le_bytes()); skip.extend(vec![0; count]);
+                table.log_frame(skip.len() as u32, 0).unwrap(); source.extend(skip);
+            }
+            let len = if frame == 2 { 0 } else if case % 20 == 0 { 140000 } else { 1 + next(&mut x) as usize % 1500 };
+            let bytes: Vec<_> = (0..len).map(|_| match case % 3 { 0 => b'"'A', 1 => next(&mut x) as u8, _ => (next(&mut x) % 7) as u8 }).collect();
+            let comp = compressed(&bytes, case % 2 == 0, case % 4 < 2);
+            table.log_frame(comp.len() as u32, len as u32).unwrap();
+            source.extend(comp); plain.extend(bytes); bounds.push(plain.len());
+        }
+        for chunk in [1, 3, 127, 131075] {
+            for output_chunk in [1, 7, 1500, 131072, 1000000] {
+                let mut decoder = DecodeOptions::new(Chunked { inner: Cursor::new(source.clone()), chunk }).seek_table(table.clone()).into_decoder().unwrap();
+                eprintln"'!("case={case} chunk={chunk} output_chunk={output_chunk}");
+                check(&mut decoder, &plain, 0, plain.len(), output_chunk);
+                for i in 0..10 {
+                    let end = if i % 2 == 0 { bounds[i % bounds.len()] } else { next(&mut x) as usize % (plain.len()+1) };
+                    let start = next(&mut x) as usize % (end+1);
+                    check(&mut decoder, &plain, start, end, output_chunk);
+                }
+            }
+        }
+    }
+    println!("all probes passed");
+}
+EOF
+cargo run --offline --manifest-path "$tmp/Cargo.toml" > "$tmp/out" 2> "$tmp/log"; tail -15 "$tmp/log"; cat "$tmp/out"' in /home/at/code/rust/zeekstd
+ succeeded in 17126ms:
+case=159 chunk=3 output_chunk=1
+case=159 chunk=3 output_chunk=7
+case=159 chunk=3 output_chunk=1500
+case=159 chunk=3 output_chunk=131072
+case=159 chunk=3 output_chunk=1000000
+case=159 chunk=127 output_chunk=1
+case=159 chunk=127 output_chunk=7
+case=159 chunk=127 output_chunk=1500
+case=159 chunk=127 output_chunk=131072
+case=159 chunk=127 output_chunk=1000000
+case=159 chunk=131075 output_chunk=1
+case=159 chunk=131075 output_chunk=7
+case=159 chunk=131075 output_chunk=1500
+case=159 chunk=131075 output_chunk=131072
+case=159 chunk=131075 output_chunk=1000000
+all probes passed
+
+exec
+/run/current-system/sw/bin/zsh -lc 'tail -10 /tmp/zeekstd-review-zDiy6b/log; cat /tmp/zeekstd-review-zDiy6b/out; cargo test -p zeekstd --no-default-features' in /home/at/code/rust/zeekstd
+ succeeded in 1045ms:
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.29s
+     Running unittests src/lib.rs (target/debug/build/zeekstd/32aa250d48da23d0/out/zeekstd-32aa250d48da23d0)
+
+running 35 tests
+test encode::tests::raw_encoder_forbids_compressed_frame_size_0 ... ok
+test decode::tests::decompress_and_reset ... ok
+test decode::tests::checksum_verified_when_limit_is_at_an_inner_frame_end ... ok
+test encode::tests::raw_encoder_forbids_uncompressed_frame_size_0 ... ok
+test decode::tests::set_offset_boundaries ... ok
+test decode::tests::decompress_until_upper_frame ... ok
+test decode::tests::decompress_last_frames ... ok
+test decode::tests::set_frame_boundaries ... ok
+test decode::tests::reset_decompression ... ok
+test decode::tests::truncated_source_is_rejected ... ok
+test decode::tests::options ... ok
+test decode::tests::seek_table_that_disagrees_with_frame_is_rejected ... ok
+test encode::tests::checksum ... ok
+test encode::tests::raw_encoder_reset ... ok
+test decode::tests::decompress_everything_after_partly_decompression ... ok
+test seek_table::tests::frame_functions ... ok
+test decode::tests::checksum_verified_when_trailer_arrives_in_a_later_read ... ok
+test tests::cycle_stand_alone_seek_table_foot ... ok
+test tests::cycle ... ok
+test decode::tests::decompress_within_offset_boundaries ... ok
+test decode::tests::checksum_verified_when_trailer_starts_at_input_buffer_boundary ... ok
+test decode::tests::upper_frame_greater_than_lower_frame ... ok
+test tests::patch_cycle ... ok
+test tests::cycle_stand_alone_seek_table_head ... ok
+test decode::tests::small_reads_restore_everything ... ok
+test tests::patch_cycle_custom_compressed_frame_size ... ok
+test seek_table::tests::deserialize_compatible_with_zstd_seekable ... ok
+test tests::cycle_custom_compressed_frame_size ... ok
+test tests::cycle_stand_alone_seek_table_foot_custom_compressed_frame_size ... ok
+test seek_table::tests::serialize_compatible_with_zstd_seekable ... ok
+test seek_table::tests::serde_cycle ... ok
+test seek_table::tests::serialize ... ok
+test tests::cycle_custom_decompressed_frame_size ... ok
+test tests::cycle_stand_alone_seek_table_foot_custom_decompressed_frame_size ... ok
+test tests::patch_cycle_custom_decompressed_frame_size ... ok
+
+test result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.67s
+
+   Doc-tests zeekstd
+
+running 30 tests
+test lib/src/seek_table.rs - seek_table::SeekTable::from_seekable (line 326) - compile ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::from_seekable_format (line 367) - compile ... ok
+test lib/src/encode.rs - encode::EncodeOptions (line 102) ... ok
+test lib/src/decode.rs - decode::Decoder<'_,S>::decompress (line 341) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_size_comp (line 705) ... ok
+test lib/src/encode.rs - encode::RawEncoder<'_>::seek_table (line 485) ... ok
+test lib/src/decode.rs - decode::Decoder<'_,S>::reset (line 382) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_end_decomp (line 676) ... ok
+test lib/src/encode.rs - encode::RawEncoder<'_>::reset_seek_table (line 523) ... ok
+test lib/src/encode.rs - encode::RawEncoder<'_>::end_frame (line 426) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_index_decomp (line 566) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_end_comp (line 647) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_index_comp (line 547) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_start_decomp (line 618) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_start_comp (line 589) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_size_decomp (line 735) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::from_seekable (line 309) ... ok
+test lib/src/encode.rs - encode::RawEncoder (line 222) ... ok
+test lib/src/encode.rs - encode::RawEncoder<'_>::compress (line 389) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::from_seekable_format (line 350) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::into_serializer (line 867) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::log_frame (line 501) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::into_format_serializer (line 891) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::max_frame_size_comp (line 761) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::max_frame_size_decomp (line 786) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::size_decomp (line 839) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::num_frames (line 529) ... ok
+test lib/src/seek_table.rs - seek_table::Serializer (line 939) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::size_comp (line 813) ... ok
+test lib/src/seek_table.rs - seek_table::Serializer::reset (line 1011) ... ok
+
+test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+all doctests ran in 0.19s; merged doctests compilation took 0.17s
+
+exec
+/run/current-system/sw/bin/zsh -lc 'git diff --stat; git status --short' in /home/at/code/rust/zeekstd
+ succeeded in 0ms:
+?? .claude/
+?? AGENTS.md
+?? CLAUDE.md
+?? Cargo.lock.zst
+?? ai-code-reviews/
+
+codex
+No actionable regressions were found. Workspace and no-default-features tests pass, as do additional probes covering short reads, small output buffers, seeks, and empty or skippable frames.
+No actionable regressions were found. Workspace and no-default-features tests pass, as do additional probes covering short reads, small output buffers, seeks, and empty or skippable frames.

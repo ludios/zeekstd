@@ -1,0 +1,47 @@
+PASS	compress	big_def_rnd5g	5368885799 bytes 2s
+PASS	zstd-d	big_def_rnd5g	ok 2s
+PASS	zstd-t	big_def_rnd5g	ok
+PASS	zstd-l	big_def_rnd5g	 2562 1 5.00 GiB XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/big_def_rnd5g.zst
+PASS	zstdcat	big_def_rnd5g	ok
+PASS	pzstd-d	big_def_rnd5g	ok
+PASS	zeekstd-d	big_def_rnd5g	ok
+PASS	zeekstd-l	big_def_rnd5g	2561 5368865294 5368709121 2097152 1.000 /tmp/claude-1000/-home-at-code-rust-zee
+PASS	seek	big_def_rnd5g	[4294967295,4294968320)
+PASS	seek	big_def_rnd5g	[5368709120,5368709121)
+PASS	seek	big_def_rnd5g	[2097151,2097153)
+PASS	compress	big_s3g_rnd5g	5368832144 bytes 2s
+PASS	zstd-d	big_s3g_rnd5g	ok 2s
+PASS	zstd-t	big_s3g_rnd5g	ok
+PASS	zstd-l	big_s3g_rnd5g	 7 1 5.00 GiB XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/big_s3g_rnd5g.zst
+PASS	zstdcat	big_s3g_rnd5g	ok
+PASS	pzstd-d	big_s3g_rnd5g	ok
+PASS	zeekstd-d	big_s3g_rnd5g	ok
+PASS	zeekstd-l	big_s3g_rnd5g	6 5368832079 5368709121 1073741824 1.000 /tmp/claude-1000/-home-at-code-rust-zee
+PASS	seek	big_s3g_rnd5g	[1073741823,1073741825)
+PASS	seek	big_s3g_rnd5g	[5368709119,5368709121)
+PASS	compress	big_s512k_text3g	768017 bytes 0s
+PASS	zstd-d	big_s512k_text3g	ok 1s
+PASS	zstd-t	big_s512k_text3g	ok
+PASS	zstd-l	big_s512k_text3g	 6145 1 750 KiB XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/big_s512k_text3g.zst
+PASS	zstdcat	big_s512k_text3g	ok
+PASS	pzstd-d	big_s512k_text3g	ok
+PASS	zeekstd-d	big_s512k_text3g	ok
+PASS	zeekstd-l	big_s512k_text3g	6144 718848 3221225472 524288 4481.094 /tmp/claude-1000/-home-at-code-rust-zeeks
+PASS	seek	big_s512k_text3g	[2147483000,2147484000)
+PASS	seek	big_s512k_text3g	[0,1)
+PASS	compress	big_patch200m	51497 bytes 11s
+FAIL	zstd-d	big_patch200m	sha mismatch: zstd: error 34 : Dictionary file /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/data/pfx200m is too large (> 33554432 bytes) 
+FAIL	zstd-t	big_patch200m	zstd: error 34 : Dictionary file /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/data/pfx200m is too large (> 33554432 bytes) 
+PASS	zstd-l	big_patch200m	 101 1 50.3 KiB XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/big_patch200m.zst
+PASS	zeekstd-d	big_patch200m	ok
+PASS	zeekstd-l	big_patch200m	100 50680 209715200 2097152 4138.027 /tmp/claude-1000/-home-at-code-rust-zeekstd
+FAIL	zstd-d --patch-from	big_patch200m	/tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/big_patch200m.zst : Decoding error (36) : Frame requir
+FAIL	zstd-d -D (no --memory)	big_patch200m	zstd: error 34 : Dictionary file /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/data/pfx200m is too large
+FAIL	zstd-d -D --long=28	big_patch200m	zstd: error 34 : Dictionary file /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/data/pfx200m is too large
+FAIL	zstd-d -D --memory=256MB	big_patch200m	zstd: error 34 : Dictionary file /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/data/pfx200m is too large
+PASS	seek	big_patch200m	[2097000,2200000)
+PASS	compress	big_patch3m	4579 bytes 0s
+FAIL	zstd-d --patch-from	big_patch3m	/tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/big_patch3m.zst : Decoding error (36) : Data corruptio
+PASS	zstd-d -D (no --memory)	big_patch3m	ok
+PASS	zstd-t -D	big_patch3m	ok
+FAIL	pzstd-d -D	big_patch3m	Operation not supported: Zstd dictionaries.

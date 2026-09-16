@@ -1,0 +1,263 @@
+PASS	compress	def_empty	38 bytes
+PASS	zstd-d	def_empty	ok
+PASS	zstd-t	def_empty	ok
+PASS	zstd-l	def_empty	 2 1 38 B 0 B 0.000 XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/def_empty.zst
+PASS	zstdcat	def_empty	ok
+PASS	pzstd-d	def_empty	ok
+PASS	zeekstd-d	def_empty	ok
+PASS	zeekstd-l	def_empty	1 13 B 0 B 0 B 0.000 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-4
+PASS	compress	def_one	39 bytes
+PASS	zstd-d	def_one	ok
+PASS	zstd-t	def_one	ok
+PASS	zstd-l	def_one	 2 1 39 B XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/def_one.zst
+PASS	zstdcat	def_one	ok
+PASS	pzstd-d	def_one	ok
+PASS	zeekstd-d	def_one	ok
+PASS	zeekstd-l	def_one	1 14 B 1 B 1 B 0.071 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-4
+PASS	compress	def_small100	113 bytes
+PASS	zstd-d	def_small100	ok
+PASS	zstd-t	def_small100	ok
+PASS	zstd-l	def_small100	 2 1 113 B XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/def_small100.zst
+PASS	zstdcat	def_small100	ok
+PASS	pzstd-d	def_small100	ok
+PASS	zeekstd-d	def_small100	ok
+PASS	zeekstd-l	def_small100	1 88 B 96 B 96 B 1.091 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7
+PASS	compress	def_rnd1k	1062 bytes
+PASS	zstd-d	def_rnd1k	ok
+PASS	zstd-t	def_rnd1k	ok
+PASS	zstd-l	def_rnd1k	 2 1 1.04 KiB XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/def_rnd1k.zst
+PASS	zstdcat	def_rnd1k	ok
+PASS	pzstd-d	def_rnd1k	ok
+PASS	zeekstd-d	def_rnd1k	ok
+PASS	zeekstd-l	def_rnd1k	1 1.01 KiB 1.00 KiB 1.00 KiB 0.987 /tmp/claude-1000/-home-at-code-rust-zeekstd/4
+PASS	compress	def_rnd1m	1048638 bytes
+PASS	zstd-d	def_rnd1m	ok
+PASS	zstd-t	def_rnd1m	ok
+PASS	zstd-l	def_rnd1m	 2 1 1.00 MiB XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/def_rnd1m.zst
+PASS	zstdcat	def_rnd1m	ok
+PASS	pzstd-d	def_rnd1m	ok
+PASS	zeekstd-d	def_rnd1m	ok
+PASS	zeekstd-l	def_rnd1m	1 1.00 MiB 1.00 MiB 1.00 MiB 1.000 /tmp/claude-1000/-home-at-code-rust-zeekstd/4
+PASS	compress	def_rnd2m_exact	2097238 bytes
+PASS	zstd-d	def_rnd2m_exact	ok
+PASS	zstd-t	def_rnd2m_exact	ok
+PASS	zstd-l	def_rnd2m_exact	 2 1 2.00 MiB XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/def_rnd2m_exact.zst
+PASS	zstdcat	def_rnd2m_exact	ok
+PASS	pzstd-d	def_rnd2m_exact	ok
+PASS	zeekstd-d	def_rnd2m_exact	ok
+PASS	zeekstd-l	def_rnd2m_exact	1 2.00 MiB 2.00 MiB 2.00 MiB 1.000 /tmp/claude-1000/-home-at-code-rust-zeekstd/4
+PASS	compress	def_rnd2m_plus1	2097260 bytes
+PASS	zstd-d	def_rnd2m_plus1	ok
+PASS	zstd-t	def_rnd2m_plus1	ok
+PASS	zstd-l	def_rnd2m_plus1	 3 1 2.00 MiB XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/def_rnd2m_plus1.zst
+PASS	zstdcat	def_rnd2m_plus1	ok
+PASS	pzstd-d	def_rnd2m_plus1	ok
+PASS	zeekstd-d	def_rnd2m_plus1	ok
+PASS	zeekstd-l	def_rnd2m_plus1	2 2.00 MiB 2.00 MiB 2.00 MiB 1.000 /tmp/claude-1000/-home-at-code-rust-zeekstd/4
+PASS	compress	def_text6m_exact	2429503 bytes
+PASS	zstd-d	def_text6m_exact	ok
+PASS	zstd-t	def_text6m_exact	ok
+PASS	zstd-l	def_text6m_exact	 4 1 2.32 MiB XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/def_text6m_exact.zst
+PASS	zstdcat	def_text6m_exact	ok
+PASS	pzstd-d	def_text6m_exact	ok
+PASS	zeekstd-d	def_text6m_exact	ok
+PASS	zeekstd-l	def_text6m_exact	3 2.32 MiB 6.00 MiB 2.00 MiB 2.590 /tmp/claude-1000/-home-at-code-rust-zeekstd/4
+PASS	compress	def_mixed10m	6612505 bytes
+PASS	zstd-d	def_mixed10m	ok
+PASS	zstd-t	def_mixed10m	ok
+PASS	zstd-l	def_mixed10m	 6 1 6.31 MiB XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/def_mixed10m.zst
+PASS	zstdcat	def_mixed10m	ok
+PASS	pzstd-d	def_mixed10m	ok
+PASS	zeekstd-d	def_mixed10m	ok
+PASS	zeekstd-l	def_mixed10m	5 6.31 MiB 10.00 MiB 2.00 MiB 1.586 /tmp/claude-1000/-home-at-code-rust-zeekstd/
+PASS	compress	def_zeros64m	3025 bytes
+PASS	zstd-d	def_zeros64m	ok
+PASS	zstd-t	def_zeros64m	ok
+PASS	zstd-l	def_zeros64m	 33 1 2.95 KiB XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/def_zeros64m.zst
+PASS	zstdcat	def_zeros64m	ok
+PASS	pzstd-d	def_zeros64m	ok
+PASS	zeekstd-d	def_zeros64m	ok
+PASS	zeekstd-l	def_zeros64m	32 2.69 KiB 64.00 MiB 2.00 MiB 24385.488 /tmp/claude-1000/-home-at-code-rust-zee
+PASS	compress	nochk_one	35 bytes
+PASS	zstd-d	nochk_one	ok
+PASS	zstd-t	nochk_one	ok
+PASS	zstd-l	nochk_one	 2 1 35 B None /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/nochk_one.zst
+PASS	zstdcat	nochk_one	ok
+PASS	pzstd-d	nochk_one	ok
+PASS	zeekstd-d	nochk_one	ok
+PASS	zeekstd-l	nochk_one	1 10 B 1 B 1 B 0.100 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-4
+PASS	compress	nochk_rnd2m_plus1	2097252 bytes
+PASS	zstd-d	nochk_rnd2m_plus1	ok
+PASS	zstd-t	nochk_rnd2m_plus1	ok
+PASS	zstd-l	nochk_rnd2m_plus1	 3 1 2.00 MiB None /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/nochk_rnd2m_plus1.zst
+PASS	zstdcat	nochk_rnd2m_plus1	ok
+PASS	pzstd-d	nochk_rnd2m_plus1	ok
+PASS	zeekstd-d	nochk_rnd2m_plus1	ok
+PASS	zeekstd-l	nochk_rnd2m_plus1	2 2.00 MiB 2.00 MiB 2.00 MiB 1.000 /tmp/claude-1000/-home-at-code-rust-zeekstd/4
+PASS	compress	nochk_mixed10m	6612485 bytes
+PASS	zstd-d	nochk_mixed10m	ok
+PASS	zstd-t	nochk_mixed10m	ok
+PASS	zstd-l	nochk_mixed10m	 6 1 6.31 MiB None /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/nochk_mixed10m.zst
+PASS	zstdcat	nochk_mixed10m	ok
+PASS	pzstd-d	nochk_mixed10m	ok
+PASS	zeekstd-d	nochk_mixed10m	ok
+PASS	zeekstd-l	nochk_mixed10m	5 6.31 MiB 10.00 MiB 2.00 MiB 1.586 /tmp/claude-1000/-home-at-code-rust-zeekstd/
+PASS	compress	s1k_small100	113 bytes
+PASS	zstd-d	s1k_small100	ok
+PASS	zstd-t	s1k_small100	ok
+PASS	zstd-l	s1k_small100	 2 1 113 B XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/s1k_small100.zst
+PASS	zstdcat	s1k_small100	ok
+PASS	pzstd-d	s1k_small100	ok
+PASS	zeekstd-d	s1k_small100	ok
+PASS	zeekstd-l	s1k_small100	1 88 B 96 B 96 B 1.091 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7
+PASS	compress	s1k_rnd1m	1070097 bytes
+PASS	zstd-d	s1k_rnd1m	ok
+PASS	zstd-t	s1k_rnd1m	ok
+PASS	zstd-l	s1k_rnd1m	 1025 1 1.02 MiB XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/s1k_rnd1m.zst
+PASS	zstdcat	s1k_rnd1m	ok
+PASS	pzstd-d	s1k_rnd1m	ok
+PASS	zeekstd-d	s1k_rnd1m	ok
+PASS	zeekstd-l	s1k_rnd1m	1024 1.01 MiB 1.00 MiB 1.00 KiB 0.987 /tmp/claude-1000/-home-at-code-rust-zeekst
+PASS	compress	s1k_text6m_exact	3999938 bytes
+PASS	zstd-d	s1k_text6m_exact	ok
+PASS	zstd-t	s1k_text6m_exact	ok
+PASS	zstd-l	s1k_text6m_exact	 6145 1 3.81 MiB XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/s1k_text6m_exact.zst
+PASS	zstdcat	s1k_text6m_exact	ok
+PASS	pzstd-d	s1k_text6m_exact	ok
+PASS	zeekstd-d	s1k_text6m_exact	ok
+PASS	zeekstd-l	s1k_text6m_exact	6144 3.77 MiB 6.00 MiB 1.00 KiB 1.592 /tmp/claude-1000/-home-at-code-rust-zeekst
+PASS	compress	s1_small100	2129 bytes
+PASS	zstd-d	s1_small100	ok
+PASS	zstd-t	s1_small100	ok
+PASS	zstd-l	s1_small100	 97 1 2.08 KiB XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/s1_small100.zst
+PASS	zstdcat	s1_small100	ok
+PASS	pzstd-d	s1_small100	ok
+PASS	zeekstd-d	s1_small100	ok
+PASS	zeekstd-l	s1_small100	96 1.31 KiB 96 B 1 B 0.071 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-
+PASS	compress	cpol64k_rnd1m	1048722 bytes
+PASS	zstd-d	cpol64k_rnd1m	ok
+PASS	zstd-t	cpol64k_rnd1m	ok
+PASS	zstd-l	cpol64k_rnd1m	 6 1 1.00 MiB XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/cpol64k_rnd1m.zst
+PASS	zstdcat	cpol64k_rnd1m	ok
+PASS	pzstd-d	cpol64k_rnd1m	ok
+PASS	zeekstd-d	cpol64k_rnd1m	ok
+PASS	zeekstd-l	cpol64k_rnd1m	5 1.00 MiB 1.00 MiB 256.00 KiB 1.000 /tmp/claude-1000/-home-at-code-rust-zeekstd
+PASS	compress	cpol64k_mixed10m	6727754 bytes
+PASS	zstd-d	cpol64k_mixed10m	ok
+PASS	zstd-t	cpol64k_mixed10m	ok
+PASS	zstd-l	cpol64k_mixed10m	 40 1 6.42 MiB XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/cpol64k_mixed10m.zst
+PASS	zstdcat	cpol64k_mixed10m	ok
+PASS	pzstd-d	cpol64k_mixed10m	ok
+PASS	zeekstd-d	cpol64k_mixed10m	ok
+PASS	zeekstd-l	cpol64k_mixed10m	39 6.42 MiB 10.00 MiB 384.00 KiB 1.559 /tmp/claude-1000/-home-at-code-rust-zeeks
+PASS	compress	cpol64k_zeros64m	2095 bytes
+PASS	zstd-d	cpol64k_zeros64m	ok
+PASS	zstd-t	cpol64k_zeros64m	ok
+PASS	zstd-l	cpol64k_zeros64m	 2 1 2.05 KiB XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/cpol64k_zeros64m.zst
+PASS	zstdcat	cpol64k_zeros64m	ok
+PASS	pzstd-d	cpol64k_zeros64m	ok
+PASS	zeekstd-d	cpol64k_zeros64m	ok
+PASS	zeekstd-l	cpol64k_zeros64m	1 2.02 KiB 64.00 MiB 64.00 MiB 32419.741 /tmp/claude-1000/-home-at-code-rust-zee
+PASS	compress	cpol1_small100	113 bytes
+PASS	zstd-d	cpol1_small100	ok
+PASS	zstd-t	cpol1_small100	ok
+PASS	zstd-l	cpol1_small100	 2 1 113 B XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/cpol1_small100.zst
+PASS	zstdcat	cpol1_small100	ok
+PASS	pzstd-d	cpol1_small100	ok
+PASS	zeekstd-d	cpol1_small100	ok
+PASS	zeekstd-l	cpol1_small100	1 88 B 96 B 96 B 1.091 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7
+PASS	compress	l1_mixed10m	7107410 bytes
+PASS	zstd-d	l1_mixed10m	ok
+PASS	zstd-t	l1_mixed10m	ok
+PASS	zstd-l	l1_mixed10m	 6 1 6.78 MiB XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/l1_mixed10m.zst
+PASS	zstdcat	l1_mixed10m	ok
+PASS	pzstd-d	l1_mixed10m	ok
+PASS	zeekstd-d	l1_mixed10m	ok
+PASS	zeekstd-l	l1_mixed10m	5 6.78 MiB 10.00 MiB 2.00 MiB 1.475 /tmp/claude-1000/-home-at-code-rust-zeekstd/
+PASS	compress	l19_mixed10m	6457506 bytes
+PASS	zstd-d	l19_mixed10m	ok
+PASS	zstd-t	l19_mixed10m	ok
+PASS	zstd-l	l19_mixed10m	 6 1 6.16 MiB XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/l19_mixed10m.zst
+PASS	zstdcat	l19_mixed10m	ok
+PASS	pzstd-d	l19_mixed10m	ok
+PASS	zeekstd-d	l19_mixed10m	ok
+PASS	zeekstd-l	l19_mixed10m	5 6.16 MiB 10.00 MiB 2.00 MiB 1.624 /tmp/claude-1000/-home-at-code-rust-zeekstd/
+PASS	compress	l22_mixed10m	6457506 bytes
+PASS	zstd-d	l22_mixed10m	ok
+PASS	zstd-t	l22_mixed10m	ok
+PASS	zstd-l	l22_mixed10m	 6 1 6.16 MiB XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/l22_mixed10m.zst
+PASS	zstdcat	l22_mixed10m	ok
+PASS	pzstd-d	l22_mixed10m	ok
+PASS	zeekstd-d	l22_mixed10m	ok
+PASS	zeekstd-l	l22_mixed10m	5 6.16 MiB 10.00 MiB 2.00 MiB 1.624 /tmp/claude-1000/-home-at-code-rust-zeekstd/
+PASS	compress	l19_s4k_text6m	3709893 bytes
+PASS	zstd-d	l19_s4k_text6m	ok
+PASS	zstd-t	l19_s4k_text6m	ok
+PASS	zstd-l	l19_s4k_text6m	 1537 1 3.54 MiB XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/l19_s4k_text6m.zst
+PASS	zstdcat	l19_s4k_text6m	ok
+PASS	pzstd-d	l19_s4k_text6m	ok
+PASS	zeekstd-d	l19_s4k_text6m	ok
+PASS	zeekstd-l	l19_s4k_text6m	1536 3.53 MiB 6.00 MiB 4.00 KiB 1.702 /tmp/claude-1000/-home-at-code-rust-zeekst
+PASS	compress	head_empty	data 13 B, table 25 B
+PASS	zstd-d	head_empty	ok
+PASS	zstd-t	head_empty	ok
+PASS	zstd-d-tablefile	head_empty	decodes to empty
+PASS	zeekstd-d	head_empty	ok
+PASS	compress	head_mixed10m	data 6612448 B, table 57 B
+PASS	zstd-d	head_mixed10m	ok
+PASS	zstd-t	head_mixed10m	ok
+PASS	zstd-d-tablefile	head_mixed10m	decodes to empty
+PASS	zeekstd-d	head_mixed10m	ok
+PASS	compress	stdin_mixed10m	6612505 bytes
+PASS	zstd-d	stdin_mixed10m	ok
+PASS	zstd-t	stdin_mixed10m	ok
+PASS	zstd-l	stdin_mixed10m	 6 1 6.31 MiB XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/stdin_mixed10m.zst
+PASS	zstdcat	stdin_mixed10m	ok
+PASS	pzstd-d	stdin_mixed10m	ok
+PASS	zeekstd-d	stdin_mixed10m	ok
+PASS	zeekstd-l	stdin_mixed10m	5 6.31 MiB 10.00 MiB 2.00 MiB 1.586 /tmp/claude-1000/-home-at-code-rust-zeekstd/
+PASS	compress	stdin_empty	38 bytes
+PASS	zstd-d	stdin_empty	ok
+PASS	zstd-t	stdin_empty	ok
+PASS	zstd-l	stdin_empty	 2 1 38 B 0 B 0.000 XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/stdin_empty.zst
+PASS	zstdcat	stdin_empty	ok
+PASS	pzstd-d	stdin_empty	ok
+PASS	zeekstd-d	stdin_empty	ok
+PASS	zeekstd-l	stdin_empty	1 13 B 0 B 0 B 0.000 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-4
+PASS	compress	patch_pfx512	1926660 bytes
+FAIL	zstd-d	patch_pfx512	sha mismatch: /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/patch_pfx512.zst : Decoding error (36) : Data corruption detected 
+FAIL	zstd-t	patch_pfx512	/tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/patch_pfx512.zst : Decoding error (36) : Data corruption detected 
+PASS	zstd-l	patch_pfx512	 3 1 1.84 MiB XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/patch_pfx512.zst
+PASS	zeekstd-d	patch_pfx512	ok
+PASS	zeekstd-l	patch_pfx512	2 1.84 MiB 3.00 MiB 2.00 MiB 1.633 /tmp/claude-1000/-home-at-code-rust-zeekstd/4
+PASS	compress	patch_pfx1m	816616 bytes
+FAIL	zstd-d	patch_pfx1m	sha mismatch: /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/patch_pfx1m.zst : Decoding error (36) : Data corruption detected 
+FAIL	zstd-t	patch_pfx1m	/tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/patch_pfx1m.zst : Decoding error (36) : Data corruption detected 
+PASS	zstd-l	patch_pfx1m	 3 1 797 KiB XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/patch_pfx1m.zst
+PASS	zeekstd-d	patch_pfx1m	ok
+PASS	zeekstd-l	patch_pfx1m	2 797.44 KiB 3.00 MiB 2.00 MiB 3.852 /tmp/claude-1000/-home-at-code-rust-zeekstd
+PASS	compress	patch_pfx3m	4579 bytes
+FAIL	zstd-d	patch_pfx3m	sha mismatch: /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/patch_pfx3m.zst : Decoding error (36) : Data corruption detected 
+FAIL	zstd-t	patch_pfx3m	/tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/patch_pfx3m.zst : Decoding error (36) : Data corruption detected 
+PASS	zstd-l	patch_pfx3m	 3 1 4.47 KiB XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/patch_pfx3m.zst
+PASS	zeekstd-d	patch_pfx3m	ok
+PASS	zeekstd-l	patch_pfx3m	2 4.44 KiB 3.00 MiB 2.00 MiB 691.977 /tmp/claude-1000/-home-at-code-rust-zeekstd
+PASS	compress	patch_pfx3m_s256k	4813 bytes
+FAIL	zstd-d	patch_pfx3m_s256k	sha mismatch: /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/patch_pfx3m_s256k.zst : Decoding error (36) : Data corruption detected 
+FAIL	zstd-t	patch_pfx3m_s256k	/tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/patch_pfx3m_s256k.zst : Decoding error (36) : Data corruption detected 
+PASS	zstd-l	patch_pfx3m_s256k	 13 1 4.70 KiB XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/patch_pfx3m_s256k.zst
+PASS	zeekstd-d	patch_pfx3m_s256k	ok
+PASS	zeekstd-l	patch_pfx3m_s256k	12 4.59 KiB 3.00 MiB 256.00 KiB 669.304 /tmp/claude-1000/-home-at-code-rust-zeek
+PASS	compress	patch_pfx3m_nommap	4579 bytes
+FAIL	zstd-d	patch_pfx3m_nommap	sha mismatch: /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/patch_pfx3m_nommap.zst : Decoding error (36) : Data corruption detected 
+FAIL	zstd-t	patch_pfx3m_nommap	/tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/patch_pfx3m_nommap.zst : Decoding error (36) : Data corruption detected 
+PASS	zstd-l	patch_pfx3m_nommap	 3 1 4.47 KiB XXH64 /tmp/claude-1000/-home-at-code-rust-zeekstd/47699d34-aff7-43ab-b601-f33bcfba8014/scratchpad/out/patch_pfx3m_nommap.zst
+PASS	zeekstd-d	patch_pfx3m_nommap	ok
+PASS	zeekstd-l	patch_pfx3m_nommap	2 4.44 KiB 3.00 MiB 2.00 MiB 691.977 /tmp/claude-1000/-home-at-code-rust-zeekstd
+FAIL	compress	patch_pfx100	Error: Failed to set window log: Parameter is out of bound
+PASS	seek	def_rnd2m_plus1	[2097000,2097153)
+PASS	seek	def_mixed10m	[2097151,6291457)
+PASS	seek	s1k_text6m_exact	[1023,3073)
+PASS	seek	cpol64k_mixed10m	[5000000,5100000)
+PASS	seek	patch_pfx3m	[2097000,2200000)
+PASS	seek	s1_small100	[3,7)

@@ -1,0 +1,3481 @@
+OpenAI Codex v0.154.0
+--------
+workdir: /home/at/code/rust/zeekstd
+model: gpt-6-astra
+provider: openai
+approval: never
+sandbox: danger-full-access
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 01a0a88b-8dc7-7443-b30d-1572d14c7c69
+--------
+user
+changes against '92c2102'
+exec
+/run/current-system/sw/bin/zsh -lc 'pwd; ls -la; git status --short; find .. -name AGENTS.md -o -name AGENTS.override.md -o -name CLAUDE.md; git diff --stat 92c210284eccbbd4f1f6b45f8c93d446ffec7ddc' in /home/at/code/rust/zeekstd
+ succeeded in 0ms:
+/home/at/code/rust/zeekstd
+total 116
+drwxr-xr-x 1 at at   568 Sep 16 04:46 .
+drwxr-xr-x 1 at at    14 Sep 16 01:46 ..
+drwxr-xr-x 1 at at    18 Sep 16 01:25 .claude
+-rw-r----- 1 at at    10 Sep 11 18:29 .envrc
+drwxr-x--- 1 at at   238 Sep 16 04:48 .git
+drwxr-x--- 1 at at    44 Sep 12 01:16 .github
+-rw-r----- 1 at at    28 Sep 11 18:29 .gitignore
+drwxr-xr-x 1 at at    54 Sep 11 18:30 .stfolder
+-rw-r----- 1 at at  1024 Sep 16 04:46 .syncthing..CHANGELOG_LIB.md.swp.tmp
+-rw-r--r-- 1 at at    14 Sep 16 01:20 AGENTS.md
+-rw-r----- 1 at at  1531 Sep 11 18:29 CHANGELOG_CLI.md
+-rw-r----- 1 at at  5257 Sep 16 04:47 CHANGELOG_LIB.md
+-rw-r--r-- 1 at at  5895 Sep 16 01:20 CLAUDE.md
+-rw-r----- 1 at at 30894 Sep 11 18:29 Cargo.lock
+-rw-r----- 1 at at     0 Sep 11 19:17 Cargo.lock.zst
+-rw-r----- 1 at at   798 Sep 11 18:29 Cargo.toml
+-rw-r----- 1 at at  1290 Sep 11 18:29 LICENSE
+-rw-r----- 1 at at  6334 Sep 11 18:29 README.md
+-rw-r----- 1 at at   656 Sep 11 18:29 SECURITY.md
+drwxr-xr-x 1 at at   264 Sep 16 03:30 ai-code-reviews
+drwxr-x--- 1 at at    22 Sep 11 18:30 assets
+-rw-r----- 1 at at   919 Sep 11 18:29 build.nix
+drwxr-x--- 1 at at    54 Sep 11 18:30 cli
+-rw-r----- 1 at at   294 Sep 11 18:29 default.nix
+-rw-r----- 1 at at  2137 Sep 11 18:29 flake.lock
+-rw-r----- 1 at at  2271 Sep 11 18:29 flake.nix
+drwxr-x--- 1 at at    64 Sep 11 18:30 fuzz
+drwxr-x--- 1 at at    40 Sep 11 18:30 lib
+-rw-r----- 1 at at  7235 Sep 11 18:29 seekable_format.md
+drwxr-xr-x 1 at at   160 Sep 11 23:50 target
+?? .claude/
+?? .syncthing..CHANGELOG_LIB.md.swp.tmp
+?? AGENTS.md
+?? CLAUDE.md
+?? Cargo.lock.zst
+?? ai-code-reviews/
+../zeekstd/CLAUDE.md
+../zeekstd/AGENTS.md
+ CHANGELOG_LIB.md    |  11 +++
+ lib/src/decode.rs   | 164 ++++++++++++++++++++++++++++++++++-
+ lib/src/encode.rs   | 239 +++++++++++++++++++++++++++++++++++++++++++++++-----
+ lib/src/error.rs    |  16 ++++
+ lib/src/seekable.rs |  10 ++-
+ 5 files changed, 416 insertions(+), 24 deletions(-)
+
+exec
+/run/current-system/sw/bin/zsh -lc 'cat CLAUDE.md; git diff 92c210284eccbbd4f1f6b45f8c93d446ffec7ddc' in /home/at/code/rust/zeekstd
+ succeeded in 0ms:
+# Environment
+
+Welcome. You're on a NixOS 26.05 machine where many things are already installed, including:
+
+ripgrep, ripgrep-all, google-chrome, curl-impersonate, gcc, go, rustc, cargo, patchelf, zip, unzip, zstd, dmesg, perf, hyperfine, codex, claude.
+
+Before starting or resuming work, check what `hostname` outputs.
+
+- If it ends in "clank", you're unable to hit production; run whatever commands you need.
+- If anything any other hostname, stop and ask the user to edit this file.
+
+# Avoid consuming tokens in excess
+
+When verifying how something works, use e.g. `rg -B2 -A10` until you need the whole file.
+
+# The user isn't always right
+
+Post-training causes LLMs to usually go along with whatever the user asked for. This can lead to worse results if there was a better way, or the user missed something. So, if you notice anything which should cause the user to pursue a different line of thinking, please push back even to the point of stopping entirely. This repo is not an eval... it's real life.
+
+LLMs also generally assume that the user wants all the things that already exist, but this isn't always the case: sometimes there are odd leftovers.
+
+Always let the user know if there's an opportunity for simplification.
+
+# There's plenty of time
+
+If more external information is needed, think and keep iterating on web search queries to thoroughly check things. Tips: try site-specific searches e.g. site:github.com, reddit.com, news.ycombinator.com; try combinations of quoted items.
+
+If you can't fetch something, use google-chrome or curl_chrome146 on this machine.
+
+# Tracking AI authorship
+
+Files with any LLM-authored code (not counting mechanistic sed-like changes) begin with a comment like `// Model-output: <model name>`, one per model that contributed (e.g. "Claude Fable 5", "ChatGPT 5.5 Pro"); keep existing lines.
+
+# Code conventions
+
+When writing _any_ kind of code, including for the above:
+
+- Think about invariants and add asserts or domain-specific errors where they might prevent misbehavior.
+- Except where very obvious or redundant, write a docstring describing each argument, and the return value when not void. What do they really represent?
+- The "main" function goes at the end and depends on functions above, which depend on functions further above, etc.
+- Scan the functions and generalize if that makes a good result; evict any deadbeats: humans with a small context window need to review and maintain this code.
+- Abstraction boundaries are important. Comments should reflect the current abstraction and generally avoid talking about other things.
+
+Minutae:
+
+- Blank lines inside functions should only be used to separate different ideas or groups of steps.
+- Use space-based alignment but only where it looks good: on adjacent lines with a very similar structure, add spaces after shorter identifiers (or the syntax to the right of them) to align things.
+
+# Programming thoughts
+
+We want a coherent, maintainable artifact that humans are happy with.
+
+A program can be:
+- shorter.
+- easier to read by a human.
+- more correct around edge cases.
+- faster than another which does the same thing.
+- much easier to change when the requirements change.
+
+These are sometimes in conflict.
+
+Try writing a function in different ways and see which version is better.
+
+Sometimes a program can log or assert to generate interesting observations which feed into further development of the program. We do our own science on the outputs later to improve the program.
+
+When there are multiple good ways to implement something, especially involving state or the definition of a type: please ask the user. User loves AskUserQuestion.
+
+# After making changes
+
+Run tests and then automatically commit your changes with this commit template:
+
+	subsystem: short one-line description; semicolon if multiple changes
+
+	Model-output: model name e.g. Claude Fable 5
+
+	<prompt>
+
+	user prompt, verbatim
+
+	AskUserQuestion question-answers, if any
+
+	</prompt>
+
+	<slop>
+
+	model's response at the end of the dialogue, verbatim, in markdown format
+
+	</slop>
+
+"(mid-turn)" if I added something mid-turn; multiple &lt;prompt>&lt;/prompt> &lt;slop>&lt;/slop> ... if the conversation had several real turns.
+
+If acting on a code review from Codex or some other agent, inside the beginning of &lt;slop>, add:
+
+	<review model="model e.g. gpt-6-astra" reasoning_effort="effort e.g. xhigh">
+
+	...
+
+	</review>
+
+# Codex code review after each commit
+
+After each commit you make, get it reviewed by Codex (GPT-6-Astra at xhigh reasoning):
+
+	codex review --commit <sha> -c model="gpt-6-astra" -c model_reasoning_effort="xhigh"
+
+Notes:
+
+- Codex is configured globally in `~/.codex/config.toml` (`approval_policy = "never"`, `sandbox_mode = "danger-full-access"`) to never ask for permission and run unsandboxed, so reviews and `codex exec` runs never block on prompts. If codex ever stalls waiting for approval, check that file.
+- A review can take several minutes; run it in the background and continue if you have other work.
+- Sol often nitpicks, or cares about bizarre, irrelevant edge cases. Ignore those findings; they should not stop you from making progress.
+- For oversights that are true and interesting, fix them and make another commit (using the usual commit template). If you fixed nothing, say briefly in your reply why the findings didn't warrant changes.
+- Do _not_ send that follow-up fix commit through another Codex review — the review cycle for a change ends after one round of findings and fixes. (Exception: the follow-up grew into something substantial beyond addressing the findings.)
+- If you made several commits in a row, make sure the reviews cover all of them: either review each commit, or run one ranged review of the whole batch with `codex review --base <sha before your first commit>` plus the same `-c` options.
+
+# Thank you for your hard work on this project
+
+<3
+diff --git a/CHANGELOG_LIB.md b/CHANGELOG_LIB.md
+index 3e9ce16..f4dd211 100644
+--- a/CHANGELOG_LIB.md
++++ b/CHANGELOG_LIB.md
+@@ -16,6 +16,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+   frame
+ - `Decoder` returns an error when a frame's decompressed size differs from its seek table entry
+   instead of silently truncating or misaligning the output
++- `Encoder` no longer corrupts the archive when a write to its writer fails partway and the caller
++  retries: bytes the writer accepted are not resent, input consumed before the failure is reported
++  as consumed instead of failing the call, and the error surfaces on the next call
++- `Decoder::decompress` reports the bytes it already placed in the output buffer when a later read
++  from the source fails, instead of dropping them; the error surfaces on the next call
++- The `Seekable` impl for `Read + Seek` sources retries reads that fail with
++  `ErrorKind::Interrupted`
+ 
+ ### Added
+ 
+@@ -24,6 +31,10 @@ The `Error` struct has changed:
+ - The method `Error::is_invalid_frame_size_policy()` was added
+ - The method `Error::is_unexpected_eof()` was added
+ - The method `Error::is_frame_size_mismatch()` was added
++- `From<Error> for std::io::Error` was implemented. It hands back the original IO error, so that
++  callers can act on its kind, and reports an unexpected end of the source as
++  `ErrorKind::UnexpectedEof`. The `Write` impl of `Encoder` and the `Read` impl of `Decoder` use it
++  instead of wrapping every error as `ErrorKind::Other`
+ 
+ ## [0.6.2]
+ 
+diff --git a/lib/src/decode.rs b/lib/src/decode.rs
+index 812472a..3048400 100644
+--- a/lib/src/decode.rs
++++ b/lib/src/decode.rs
+@@ -1,4 +1,5 @@
+ // Model-output: Claude Fable 5.1
++// Model-output: Claude Opus 5
+ use alloc::vec;
+ use alloc::vec::Vec;
+ use zstd_safe::{DCtx, InBuffer, OutBuffer, ResetDirective};
+@@ -242,7 +243,13 @@ impl<'a, S: Seekable> Decoder<'a, S> {
+             }
+ 
+             if self.in_buf_pos == self.in_buf_limit {
+-                self.in_buf_limit = self.src.read(&mut self.in_buf)?;
++                self.in_buf_limit = match self.src.read(&mut self.in_buf) {
++                    Ok(n) => n,
++                    // Bytes already placed in `buf` must be reported, so the failed read is left
++                    // for the next call, which retries it and reports its error
++                    Err(_) if output_progress > 0 => break,
++                    Err(err) => return Err(err),
++                };
+                 self.in_buf_pos = 0;
+                 if self.in_buf_limit == 0 {
+                     return Err(Error::unexpected_eof());
+@@ -566,7 +573,7 @@ impl<S: Seekable> Decoder<'_, S> {
+ #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+ impl<S: Seekable> std::io::Read for Decoder<'_, S> {
+     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+-        self.decompress(buf).map_err(std::io::Error::other)
++        Ok(self.decompress(buf)?)
+     }
+ }
+ 
+@@ -869,6 +876,33 @@ mod tests {
+         }
+     }
+ 
++    #[test]
++    #[cfg(feature = "std")]
++    fn truncated_source_reads_as_unexpected_eof() {
++        let input = noise(2500);
++        let seekable = encode(&input, Some(FrameSizePolicy::Uncompressed(1000)), true);
++        let st = SeekTable::from_seekable(&mut BytesWrapper::new(&seekable)).unwrap();
++        let data_len = st.size_comp() as usize;
++
++        // Cut off the last checksum, so the source ends inside the last frame
++        let src = BytesWrapper::new(&seekable[..data_len - 4]);
++        let mut decoder = DecodeOptions::new(src)
++            .seek_table(st)
++            .into_decoder()
++            .unwrap();
++
++        let err = std::io::copy(&mut decoder, &mut std::io::sink()).unwrap_err();
++        assert_eq!(err.kind(), std::io::ErrorKind::UnexpectedEof);
++        let inner = err
++            .into_inner()
++            .expect("the zeekstd error is kept as source");
++        assert!(
++            inner
++                .downcast_ref::<Error>()
++                .is_some_and(Error::is_unexpected_eof)
++        );
++    }
++
+     #[test]
+     fn source_that_ends_at_the_last_frame_is_accepted() {
+         // Without checksums the last frame's final input byte is part of its last block, and the
+@@ -1231,4 +1265,130 @@ mod tests {
+         assert_eq!(n, INPUT.len() - 101);
+         assert_eq!(INPUT.as_bytes()[101..], output[..n]);
+     }
++
++    /// Round trips through sources that fail partway, retrying like a caller that keeps what it
++    /// already received would.
++    #[cfg(feature = "std")]
++    mod io_errors {
++        use std::{
++            io::{self, Cursor, ErrorKind, Read, Seek, SeekFrom},
++            ops::Range,
++        };
++
++        use super::*;
++
++        /// A source that returns at most `chunk` bytes per read and fails, with `kind`, on every
++        /// read whose index (counting from zero) lies in `failing_reads`.
++        struct FlakySource<'a> {
++            inner: Cursor<&'a [u8]>,
++            chunk: usize,
++            reads: usize,
++            failing_reads: Range<usize>,
++            kind: ErrorKind,
++        }
++
++        impl Read for FlakySource<'_> {
++            fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
++                let read = self.reads;
++                self.reads += 1;
++                if self.failing_reads.contains(&read) {
++                    return Err(io::Error::from(self.kind));
++                }
++                let n = buf.len().min(self.chunk);
++                io::Read::read(&mut self.inner, &mut buf[..n])
++            }
++        }
++
++        impl Seek for FlakySource<'_> {
++            fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
++                self.inner.seek(pos)
++            }
++        }
++
++        /// Decompresses `seekable` through a source whose reads in `failing_reads` fail with
++        /// `kind`, retrying as a caller would. Returns the output, how many errors reached the
++        /// caller, and how many reads the source saw.
++        fn decompress_with_retries(
++            seekable: &[u8],
++            seek_table: &SeekTable,
++            failing_reads: Range<usize>,
++            kind: ErrorKind,
++        ) -> (Vec<u8>, usize, usize) {
++            let mut src = FlakySource {
++                inner: Cursor::new(seekable),
++                chunk: 64,
++                reads: 0,
++                failing_reads,
++                kind,
++            };
++            let mut decoder = DecodeOptions::new(&mut src)
++                .seek_table(seek_table.clone())
++                .into_decoder()
++                .unwrap();
++            let mut output = vec![];
++            let mut buf = vec![0; INPUT.len()];
++            let mut errors = 0;
++            loop {
++                match decoder.decompress(&mut buf) {
++                    Ok(0) => break,
++                    Ok(n) => output.extend(&buf[..n]),
++                    Err(err) => {
++                        assert!(err.is_io());
++                        errors += 1;
++                    }
++                }
++            }
++            drop(decoder);
++            (output, errors, src.reads)
++        }
++
++        #[test]
++        fn read_errors_never_lose_output() {
++            let seekable =
++                new_seekable(Some(FrameSizePolicy::Uncompressed(INPUT.len() as u32 / 7)));
++            let seek_table = SeekTable::from_seekable(&mut BytesWrapper::new(&seekable)).unwrap();
++            let (_, _, reads) =
++                decompress_with_retries(&seekable, &seek_table, 0..0, ErrorKind::TimedOut);
++            for fail_at in 0..reads {
++                let (output, errors, _) = decompress_with_retries(
++                    &seekable,
++                    &seek_table,
++                    fail_at..fail_at + 2,
++                    ErrorKind::TimedOut,
++                );
++                // Two failures in a row: whatever the first one interrupted, the second hits a
++                // fresh call and must reach the caller
++                assert!(
++                    errors >= 1,
++                    "no error reported for reads {fail_at} and {}",
++                    fail_at + 1
++                );
++                assert_eq!(
++                    output,
++                    INPUT.as_bytes(),
++                    "wrong output after reads {fail_at} and {} failed",
++                    fail_at + 1
++                );
++            }
++        }
++
++        #[test]
++        fn interrupted_reads_are_retried_internally() {
++            let seekable =
++                new_seekable(Some(FrameSizePolicy::Uncompressed(INPUT.len() as u32 / 7)));
++            let seek_table = SeekTable::from_seekable(&mut BytesWrapper::new(&seekable)).unwrap();
++            let (_, _, reads) =
++                decompress_with_retries(&seekable, &seek_table, 0..0, ErrorKind::Interrupted);
++            for fail_at in 0..reads {
++                let (output, errors, _) = decompress_with_retries(
++                    &seekable,
++                    &seek_table,
++                    fail_at..fail_at + 2,
++                    ErrorKind::Interrupted,
++                );
++                assert_eq!(errors, 0, "interruption of read {fail_at} leaked");
++                assert_eq!(output, INPUT.as_bytes());
++            }
++        }
++    }
+ }
+diff --git a/lib/src/encode.rs b/lib/src/encode.rs
+index b779db9..0afe3cc 100644
+--- a/lib/src/encode.rs
++++ b/lib/src/encode.rs
+@@ -1,3 +1,4 @@
++// Model-output: Claude Fable 5.1
+ #[cfg(feature = "std")]
+ use alloc::vec::Vec;
+ use zstd_safe::{
+@@ -576,7 +577,10 @@ impl RawEncoder<'_> {
+ #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+ pub struct Encoder<'a, W> {
+     raw: RawEncoder<'a>,
++    /// Compressed bytes on their way to the writer: `out_buf[out_buf_written..out_buf_pos]` still
++    /// has to be written, `out_buf[out_buf_pos..]` is free.
+     out_buf: Vec<u8>,
++    out_buf_written: usize,
+     out_buf_pos: usize,
+     writer: W,
+     written_compressed: u64,
+@@ -604,6 +608,7 @@ impl<'a, W> Encoder<'a, W> {
+         Ok(Self {
+             raw: opts.into_raw_encoder()?,
+             out_buf: alloc::vec![0; CCtx::out_size()],
++            out_buf_written: 0,
+             out_buf_pos: 0,
+             writer,
+             written_compressed: 0,
+@@ -653,6 +658,15 @@ impl<'a, W: std::io::Write> Encoder<'a, W> {
+         let mut input_progress = 0;
+ 
+         while input_progress < buf.len() {
++            // Consumed input cannot be handed back, so no write error may follow it within one
++            // call: make room before compressing, and once some input went in, leave the error
++            // for the next call to report.
++            match self.flush_out_buf(false) {
++                Ok(()) => {}
++                Err(err) if input_progress == 0 => return Err(err),
++                Err(_) => break,
++            }
++
+             let progress = self.raw.compress_with_prefix(
+                 &buf[input_progress..],
+                 &mut self.out_buf[self.out_buf_pos..],
+@@ -664,7 +678,6 @@ impl<'a, W: std::io::Write> Encoder<'a, W> {
+             }
+ 
+             self.out_buf_pos += progress.out_progress;
+-            self.flush_out_buf(false)?;
+             input_progress += progress.in_progress;
+         }
+ 
+@@ -712,9 +725,9 @@ impl<W: std::io::Write> Encoder<'_, W> {
+         let mut progress = 0;
+ 
+         loop {
++            self.flush_out_buf(false)?;
+             let prog = self.raw.end_frame(&mut self.out_buf[self.out_buf_pos..])?;
+             self.out_buf_pos += prog.out_progress;
+-            self.flush_out_buf(false)?;
+             progress += prog.out_progress;
+ 
+             if prog.data_left == 0 {
+@@ -761,35 +774,61 @@ impl<W: std::io::Write> Encoder<'_, W> {
+     /// Fails if the frame cannot be finished or writing the seek table fails.
+     pub fn finish_format(mut self, format: Format) -> Result<u64> {
+         self.end_frame()?;
++        self.flush_out_buf(true)?;
++        // Nothing can be retried from here on, `self` is consumed, so plain `write_all` will do
+         let mut ser = self.raw.into_seek_table().into_format_serializer(format);
+ 
+         loop {
+-            let n = ser.write_into(&mut self.out_buf[self.out_buf_pos..]);
++            let n = ser.write_into(&mut self.out_buf);
+             if n == 0 {
+-                self.writer.write_all(&self.out_buf[..self.out_buf_pos])?;
+-                self.written_compressed += self.out_buf_pos as u64;
+-                self.writer.flush()?;
+-                return Ok(self.written_compressed);
++                break;
+             }
+ 
+-            self.out_buf_pos += n;
+-            if self.out_buf_pos == self.out_buf.len() {
+-                self.writer.write_all(&self.out_buf[..self.out_buf_pos])?;
+-                self.written_compressed += self.out_buf_pos as u64;
+-                self.out_buf_pos = 0;
+-            }
++            self.writer.write_all(&self.out_buf[..n])?;
++            self.written_compressed += n as u64;
+         }
++
++        self.writer.flush()?;
++
++        Ok(self.written_compressed)
+     }
+ 
+-    /// Flushes the internal output buffer, if it is filled with data, or force is true.
+-    #[inline]
++    /// Writes the buffered compressed bytes to the writer, if the buffer is full or `force` is
++    /// true.
++    ///
++    /// Bytes the writer accepts leave the buffer at once, so when a write fails partway, only the
++    /// bytes still owed remain: calling this again resumes there and never resends a prefix.
+     fn flush_out_buf(&mut self, force: bool) -> Result<()> {
+-        if self.out_buf_pos == self.out_buf.len() || force {
+-            self.writer.write_all(&self.out_buf[..self.out_buf_pos])?;
+-            self.written_compressed += self.out_buf_pos as u64;
+-            self.out_buf_pos = 0;
++        if self.out_buf_pos < self.out_buf.len() && !force {
++            return Ok(());
+         }
+ 
++        while self.out_buf_written < self.out_buf_pos {
++            let pending = &self.out_buf[self.out_buf_written..self.out_buf_pos];
++            match self.writer.write(pending) {
++                Ok(0) => {
++                    return Err(std::io::Error::new(
++                        std::io::ErrorKind::WriteZero,
++                        "failed to write whole buffer",
++                    )
++                    .into());
++                }
++                Ok(n) => {
++                    assert!(
++                        n <= pending.len(),
++                        "writer accepted more bytes than it was given"
++                    );
++                    self.out_buf_written += n;
++                    self.written_compressed += n as u64;
++                }
++                Err(err) if err.kind() == std::io::ErrorKind::Interrupted => {}
++                Err(err) => return Err(err.into()),
++            }
++        }
++
++        self.out_buf_written = 0;
++        self.out_buf_pos = 0;
++
+         Ok(())
+     }
+ }
+@@ -797,11 +836,11 @@ impl<W: std::io::Write> Encoder<'_, W> {
+ #[cfg(feature = "std")]
+ impl<W: std::io::Write> std::io::Write for Encoder<'_, W> {
+     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+-        self.compress(buf).map_err(std::io::Error::other)
++        Ok(self.compress(buf)?)
+     }
+ 
+     fn flush(&mut self) -> std::io::Result<()> {
+-        self.flush_out_buf(true).map_err(std::io::Error::other)?;
++        self.flush_out_buf(true)?;
+         self.writer.flush()
+     }
+ }
+@@ -899,4 +938,162 @@ mod tests {
+             assert!(descriptor & 0x4 > 0);
+         }
+     }
++
++    /// Round trips through writers that fail partway, retrying like a caller that still holds its
++    /// data would.
++    #[cfg(feature = "std")]
++    mod io_errors {
++        use std::{
++            io::{self, ErrorKind, Write},
++            ops::Range,
++        };
++
++        use crate::{BytesWrapper, Decoder};
++
++        use super::*;
++
++        /// A writer that accepts at most `chunk` bytes per call and fails, with `kind`, on every
++        /// call whose index (counting from zero) lies in `failing_calls`.
++        struct FlakyWriter {
++            written: Vec<u8>,
++            chunk: usize,
++            calls: usize,
++            failing_calls: Range<usize>,
++            kind: ErrorKind,
++        }
++
++        impl Write for FlakyWriter {
++            fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
++                let call = self.calls;
++                self.calls += 1;
++                if self.failing_calls.contains(&call) {
++                    return Err(io::Error::from(self.kind));
++                }
++                let n = buf.len().min(self.chunk);
++                self.written.extend(&buf[..n]);
++                Ok(n)
++            }
++
++            fn flush(&mut self) -> io::Result<()> {
++                Ok(())
++            }
++        }
++
++        /// 200 KiB of xorshift noise: incompressible, so the encoder's output buffer fills up and
++        /// gets written out in the middle of compression.
++        fn noise() -> Vec<u8> {
++            let mut state = 0x9E37_79B9_7F4A_7C15_u64;
++            (0..200 * 1024)
++                .map(|_| {
++                    state ^= state << 13;
++                    state ^= state >> 7;
++                    state ^= state << 17;
++                    state as u8
++                })
++                .collect()
++        }
++
++        /// Feeds `input` to `encoder` in 10 KiB slices, retrying a slice whenever the encoder
++        /// reports an IO error, and returns how many errors it saw.
++        fn compress_with_retries(
++            encoder: &mut Encoder<'_, &mut FlakyWriter>,
++            input: &[u8],
++        ) -> usize {
++            let mut errors = 0;
++            let mut pos = 0;
++            while pos < input.len() {
++                let end = input.len().min(pos + 10 * 1024);
++                match encoder.compress(&input[pos..end]) {
++                    Ok(n) => pos += n,
++                    Err(err) => {
++                        assert!(err.is_io());
++                        errors += 1;
++                    }
++                }
++            }
++            errors
++        }
++
++        /// Flushes `encoder`, retrying on errors of `kind`, and returns how many errors it saw.
++        fn flush_with_retries(
++            encoder: &mut Encoder<'_, &mut FlakyWriter>,
++            kind: ErrorKind,
++        ) -> usize {
++            let mut errors = 0;
++            while let Err(err) = encoder.flush() {
++                assert_eq!(err.kind(), kind);
++                errors += 1;
++            }
++            errors
++        }
++
++        fn decompress_all(seekable: &[u8]) -> Vec<u8> {
++            let mut decoder = Decoder::new(BytesWrapper::new(seekable)).unwrap();
++            let mut output = vec![];
++            let mut buf = vec![0; 64 * 1024];
++            loop {
++                let n = decoder.decompress(&mut buf).unwrap();
++                if n == 0 {
++                    break;
++                }
++                output.extend(&buf[..n]);
++            }
++            output
++        }
++
++        /// Compresses `noise()` through a writer whose calls in `failing_calls` fail with `kind`,
++        /// retrying as a caller would, and checks that the archive decodes back to the input.
++        /// Returns how many errors reached the caller and how many write calls the writer saw, or
++        /// `None` when the failure hit `finish`, which consumes the encoder and so cannot be
++        /// retried.
++        fn round_trip(failing_calls: Range<usize>, kind: ErrorKind) -> Option<(usize, usize)> {
++            let input = noise();
++            let mut writer = FlakyWriter {
++                written: vec![],
++                chunk: 30_000,
++                calls: 0,
++                failing_calls,
++                kind,
++            };
++            let mut encoder = Encoder::new(&mut writer).unwrap();
++            let mut errors = compress_with_retries(&mut encoder, &input);
++            errors += flush_with_retries(&mut encoder, kind);
++            match encoder.finish() {
++                Err(err) => {
++                    assert!(err.is_io());
++                    None
++                }
++                Ok(total) => {
++                    assert_eq!(total, writer.written.len() as u64);
++                    assert_eq!(decompress_all(&writer.written), input);
++                    Some((errors, writer.calls))
++                }
++            }
++        }
++
++        #[test]
++        fn write_errors_never_corrupt_the_archive() {
++            let (_, calls) = round_trip(0..0, ErrorKind::WouldBlock).unwrap();
++            for fail_at in 0..calls {
++                if let Some((errors, _)) = round_trip(fail_at..fail_at + 2, ErrorKind::WouldBlock) {
++                    // Two failures in a row: whatever the first one interrupted, the second hits
++                    // a fresh call and must reach the caller
++                    assert!(
++                        errors >= 1,
++                        "no error reported for write calls {fail_at} and {}",
++                        fail_at + 1
++                    );
++                }
++            }
++        }
++
++        #[test]
++        fn interrupted_writes_are_retried_internally() {
++            let (_, calls) = round_trip(0..0, ErrorKind::Interrupted).unwrap();
++            for fail_at in 0..calls {
++                let (errors, _) = round_trip(fail_at..fail_at + 2, ErrorKind::Interrupted).unwrap();
++                assert_eq!(errors, 0, "interruption of write call {fail_at} leaked");
++            }
++        }
++    }
+ }
+diff --git a/lib/src/error.rs b/lib/src/error.rs
+index 11cdafd..2ea1ac7 100644
+--- a/lib/src/error.rs
++++ b/lib/src/error.rs
+@@ -1,4 +1,5 @@
+ // Model-output: Claude Fable 5.1
++// Model-output: Claude Opus 5
+ use zstd_safe::{ErrorCode, get_error_name, zstd_sys::ZSTD_ErrorCode};
+ 
+ /// A `Result` alias where the `Err` case is `zeekstd::Error`.
+@@ -129,6 +130,21 @@ impl From<std::io::Error> for Error {
+     }
+ }
+ 
++#[cfg(feature = "std")]
++#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
++impl From<Error> for std::io::Error {
++    /// Hands back the original IO error, so that its kind can be acted on, and gives a truncated
++    /// source the matching [`std::io::ErrorKind::UnexpectedEof`]. Any other error is wrapped as
++    /// [`std::io::ErrorKind::Other`].
++    fn from(value: Error) -> Self {
++        match value.kind {
++            Kind::IO(err) => err,
++            Kind::UnexpectedEof => Self::new(std::io::ErrorKind::UnexpectedEof, value),
++            _ => Self::other(value),
++        }
++    }
++}
++
+ impl From<ErrorCode> for Error {
+     fn from(value: ErrorCode) -> Self {
+         Self {
+diff --git a/lib/src/seekable.rs b/lib/src/seekable.rs
+index ec20b8f..2954bce 100644
+--- a/lib/src/seekable.rs
++++ b/lib/src/seekable.rs
+@@ -1,3 +1,4 @@
++// Model-output: Claude Fable 5.1
+ use crate::{
+     SEEK_TABLE_INTEGRITY_SIZE, SKIPPABLE_HEADER_SIZE,
+     error::{Error, Result},
+@@ -118,7 +119,14 @@ where
+     }
+ 
+     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+-        Ok(self.read(buf)?)
++        // A caller of `Seekable` cannot tell an interruption from a failure, so retry it here, as
++        // `read_exact` does
++        loop {
++            match std::io::Read::read(self, buf) {
++                Err(err) if err.kind() == std::io::ErrorKind::Interrupted => {}
++                res => return Ok(res?),
++            }
++        }
+     }
+ 
+     fn seek_table_integrity(&mut self, format: Format) -> Result<[u8; SEEK_TABLE_INTEGRITY_SIZE]> {
+
+exec
+/run/current-system/sw/bin/zsh -lc "hostname; cat Cargo.toml lib/Cargo.toml; nl -ba lib/src/decode.rs | sed -n '1,365p'; nl -ba lib/src/encode.rs | sed -n '275,570p'" in /home/at/code/rust/zeekstd
+ succeeded in 0ms:
+xclank
+[workspace]
+resolver = "2"
+members = ["cli", "lib", "fuzz"]
+
+[workspace.package]
+edition = "2024"
+license = "BSD-2-Clause"
+description = "Rust implementation of the Zstandard Seekable Format."
+homepage = "https://github.com/rorosen/zeekstd"
+repository = "https://github.com/rorosen/zeekstd"
+readme = "README.md"
+keywords = ["zstd", "zstandard", "compression", "zstd-seekable-format"]
+categories = ["compression"]
+
+[workspace.dependencies]
+zstd-safe = { version = "7.2.4", features = ["std"] }
+
+[workspace.lints.clippy]
+pedantic = { level = "deny", priority = -1 }
+cast_possible_wrap = "allow"
+cast_possible_truncation = "allow"
+cast-lossless = "allow"
+must_use_candidate = "allow"
+return_self_not_must_use = "allow"
+struct-excessive-bools = "allow"
+
+[profile.bench]
+codegen-units = 1
+opt-level = 3
+[package]
+name = "zeekstd"
+version = "0.6.2"
+description.workspace = true
+edition.workspace = true
+license.workspace = true
+keywords.workspace = true
+categories.workspace = true
+homepage.workspace = true
+repository.workspace = true
+readme.workspace = true
+
+[dependencies]
+zstd-safe = { workspace = true }
+
+[dev-dependencies]
+criterion = "0.8.1"
+proptest = "1.9.0"
+zstd = "0.13.3"
+
+[dev-dependencies.zstd-safe]
+workspace = true
+features = ["seekable"]
+
+[features]
+default = ["std"]
+
+std = ["zstd-safe/std"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[lints]
+workspace = true
+
+[[bench]]
+name = "compress"
+harness = false
+
+[[bench]]
+name = "decompress"
+harness = false
+     1	// Model-output: Claude Fable 5.1
+     2	// Model-output: Claude Opus 5
+     3	use alloc::vec;
+     4	use alloc::vec::Vec;
+     5	use zstd_safe::{DCtx, InBuffer, OutBuffer, ResetDirective};
+     6	
+     7	use crate::{
+     8	    Error,
+     9	    error::Result,
+    10	    seek_table::SeekTable,
+    11	    seekable::{OffsetFrom, Seekable},
+    12	};
+    13	
+    14	/// Options that configure how data is decompressed.
+    15	pub struct DecodeOptions<'a, S> {
+    16	    dctx: DCtx<'a>,
+    17	    src: S,
+    18	    seek_table: Option<SeekTable>,
+    19	    lower_frame: Option<u32>,
+    20	    offset: Option<u64>,
+    21	    upper_frame: Option<u32>,
+    22	    offset_limit: Option<u64>,
+    23	}
+    24	
+    25	impl<'a, S> DecodeOptions<'a, S> {
+    26	    /// Creates a set of decoding options with default initial values. `src` contains the
+    27	    /// compressed data.
+    28	    ///
+    29	    /// # Panics
+    30	    ///
+    31	    /// If allocation of [`DCtx`] fails.
+    32	    pub fn new(src: S) -> Self {
+    33	        Self::with_dctx(src, DCtx::create())
+    34	    }
+    35	
+    36	    /// Tries to create new options.
+    37	    ///
+    38	    /// Returns `None` if allocation of [`DCtx`] fails.
+    39	    pub fn try_new(src: S) -> Option<Self> {
+    40	        let dctx = DCtx::try_create()?;
+    41	        Some(Self::with_dctx(src, dctx))
+    42	    }
+    43	
+    44	    /// Creates options with the given decompression context.
+    45	    pub fn with_dctx(src: S, dctx: DCtx<'a>) -> Self {
+    46	        Self {
+    47	            dctx,
+    48	            src,
+    49	            seek_table: None,
+    50	            lower_frame: None,
+    51	            offset: None,
+    52	            upper_frame: None,
+    53	            offset_limit: None,
+    54	        }
+    55	    }
+    56	
+    57	    /// Sets a [`DCtx`].
+    58	    pub fn dctx(mut self, dctx: DCtx<'a>) -> Self {
+    59	        self.dctx = dctx;
+    60	        self
+    61	    }
+    62	
+    63	    /// Sets the [`SeekTable`] for this options.
+    64	    ///
+    65	    /// If a seek table is set, it will be used directly during decompression instead of reading
+    66	    /// the seek table from the seekable `src`.
+    67	    pub fn seek_table(mut self, seek_table: SeekTable) -> Self {
+    68	        self.seek_table = Some(seek_table);
+    69	        self
+    70	    }
+    71	
+    72	    /// Sets the frame where decompression starts.
+    73	    ///
+    74	    /// Overrides the offset set with [`Self::offset`] if both are specified.
+    75	    pub fn lower_frame(mut self, index: u32) -> Self {
+    76	        self.lower_frame = Some(index);
+    77	        self
+    78	    }
+    79	
+    80	    /// Sets the last frame that is included in decompression.
+    81	    ///
+    82	    /// Overrides the offset limit set with [`Self::offset_limit`] if both are specified.
+    83	    pub fn upper_frame(mut self, index: u32) -> Self {
+    84	        self.upper_frame = Some(index);
+    85	        self
+    86	    }
+    87	
+    88	    /// Sets the decompression offset.
+    89	    ///
+    90	    /// The offset is the position in the decompressed data of the seekable source from which
+    91	    /// decompression starts.
+    92	    pub fn offset(mut self, offset: u64) -> Self {
+    93	        self.offset = Some(offset);
+    94	        self
+    95	    }
+    96	
+    97	    /// Sets a limit for the decompression offset.
+    98	    ///
+    99	    /// The limit is the position in the decompressed data of the seekable source at which
+   100	    /// decompresion stops.
+   101	    pub fn offset_limit(mut self, limit: u64) -> Self {
+   102	        self.offset_limit = Some(limit);
+   103	        self
+   104	    }
+   105	}
+   106	
+   107	impl<'a, S: Seekable> DecodeOptions<'a, S> {
+   108	    /// Builds a [`Decoder`] with the configuration.
+   109	    ///
+   110	    /// # Errors
+   111	    ///
+   112	    /// Fails if the decoder could not created.
+   113	    pub fn into_decoder(self) -> Result<Decoder<'a, S>> {
+   114	        Decoder::with_opts(self)
+   115	    }
+   116	}
+   117	
+   118	/// Decompresses data from a seekable source.
+   119	///
+   120	/// A decoder reads compressed data from a seekable source. By default, it decompresses
+   121	/// everything, from the first to the last frame. This can be changed via [`DecodeOptions`] or by
+   122	/// setting the offset after initialization.
+   123	pub struct Decoder<'a, S> {
+   124	    dctx: DCtx<'a>,
+   125	    seek_table: SeekTable,
+   126	    src: S,
+   127	    /// Index of the frame the decompression context is in, or about to enter.
+   128	    frame_idx: u32,
+   129	    /// Whether the decompression context sits between frames, i.e. the last frame it saw was
+   130	    /// consumed completely, trailer included.
+   131	    frame_done: bool,
+   132	    decomp_pos: u64,
+   133	    offset: u64,
+   134	    offset_limit: u64,
+   135	    in_buf: Vec<u8>,
+   136	    in_buf_pos: usize,
+   137	    in_buf_limit: usize,
+   138	    out_buf: Vec<u8>,
+   139	    read_compressed: u64,
+   140	}
+   141	
+   142	impl<'a, S: Seekable> Decoder<'a, S> {
+   143	    /// Creates a new `Decoder` with default parameters and `src` as source.
+   144	    ///
+   145	    /// This is equivalent to calling `DecodeOptions::new(src).into_decoder()`.
+   146	    ///
+   147	    /// # Errors
+   148	    ///
+   149	    /// Fails if the decoder could not be created.
+   150	    pub fn new(src: S) -> Result<Self> {
+   151	        Self::with_opts(DecodeOptions::new(src))
+   152	    }
+   153	
+   154	    /// Creates a new `Decoder` with the given [`DecodeOptions`].
+   155	    ///
+   156	    /// # Errors
+   157	    ///
+   158	    /// Fails if the decoder cannot be created.
+   159	    pub fn with_opts(mut opts: DecodeOptions<'a, S>) -> Result<Self> {
+   160	        let seek_table = opts
+   161	            .seek_table
+   162	            .map_or_else(|| SeekTable::from_seekable(&mut opts.src), Ok)?;
+   163	
+   164	        let offset = if let Some(index) = opts.lower_frame {
+   165	            seek_table.frame_start_decomp(index)?
+   166	        } else {
+   167	            opts.offset.unwrap_or(0)
+   168	        };
+   169	
+   170	        Self::check_offset(offset, &seek_table)?;
+   171	
+   172	        let offset_limit = if let Some(index) = opts.upper_frame {
+   173	            seek_table.frame_end_decomp(index)?
+   174	        } else {
+   175	            opts.offset_limit
+   176	                .unwrap_or_else(|| seek_table.size_decomp())
+   177	        };
+   178	
+   179	        Self::check_offset(offset_limit, &seek_table)?;
+   180	
+   181	        Ok(Self {
+   182	            dctx: opts.dctx,
+   183	            seek_table,
+   184	            src: opts.src,
+   185	            frame_idx: 0,
+   186	            frame_done: true,
+   187	            decomp_pos: 0,
+   188	            offset,
+   189	            offset_limit,
+   190	            in_buf: vec![0; DCtx::in_size()],
+   191	            in_buf_pos: 0,
+   192	            in_buf_limit: 0,
+   193	            out_buf: vec![0; DCtx::out_size()],
+   194	            read_compressed: 0,
+   195	        })
+   196	    }
+   197	
+   198	    /// Decompresses data from the internal source.
+   199	    ///
+   200	    /// Call this repetetively to fill `buf` with decompressed data. Returns the number of bytes
+   201	    /// written to `buf`. Decompression is finished when no more bytes are written to `buf`.
+   202	    ///
+   203	    /// Every frame that gets decompressed to its end is verified, i.e. its checksum if it has
+   204	    /// one, and its decompressed size against the seek table. An offset limit inside a frame
+   205	    /// skips the verification of that frame.
+   206	    ///
+   207	    /// If a `prefix` is passed, it will be referenced at the beginning of every frame.
+   208	    /// Referencing a raw content prefix has almost no CPU nor memory cost.
+   209	    ///
+   210	    /// # Errors
+   211	    ///
+   212	    /// If decompression fails, the source ends inside a frame, a frame disagrees with its seek
+   213	    /// table entry, or any parameter is invalid.
+   214	    #[allow(clippy::missing_panics_doc)]
+   215	    pub fn decompress_with_prefix<'b: 'a>(
+   216	        &mut self,
+   217	        buf: &mut [u8],
+   218	        prefix: Option<&'b [u8]>,
+   219	    ) -> Result<usize> {
+   220	        if self.read_compressed == 0 {
+   221	            self.frame_idx = self.seek_table.frame_index_decomp(self.offset);
+   222	            let start_pos = self.seek_table.frame_start_comp(self.frame_idx)?;
+   223	            self.src.set_offset(OffsetFrom::Start(start_pos))?;
+   224	            self.decomp_pos = self.seek_table.frame_start_decomp(self.frame_idx)?;
+   225	            // Reference prefix at the beginning of decompression
+   226	            if let Some(pref) = prefix {
+   227	                self.dctx.ref_prefix(pref)?;
+   228	            }
+   229	            // Trigger reading from src
+   230	            self.in_buf_pos = 0;
+   231	            self.in_buf_limit = 0;
+   232	        }
+   233	
+   234	        let mut output_progress = 0;
+   235	        // Decompressed end of the frame the context is in, `None` past the last frame
+   236	        let mut frame_end = self.seek_table.frame_end_decomp(self.frame_idx).ok();
+   237	        loop {
+   238	            // Stop once no more output is wanted, unless the frame that produced the last wanted
+   239	            // byte still has its trailer to consume.
+   240	            let output_wanted = self.offset < self.offset_limit && output_progress < buf.len();
+   241	            if !output_wanted && !trailer_pending(self.frame_done, frame_end, self.decomp_pos) {
+   242	                break;
+   243	            }
+   244	
+   245	            if self.in_buf_pos == self.in_buf_limit {
+   246	                self.in_buf_limit = match self.src.read(&mut self.in_buf) {
+   247	                    Ok(n) => n,
+   248	                    // Bytes already placed in `buf` must be reported, so the failed read is left
+   249	                    // for the next call, which retries it and reports its error
+   250	                    Err(_) if output_progress > 0 => break,
+   251	                    Err(err) => return Err(err),
+   252	                };
+   253	                self.in_buf_pos = 0;
+   254	                if self.in_buf_limit == 0 {
+   255	                    return Err(Error::unexpected_eof());
+   256	                }
+   257	            }
+   258	
+   259	            let mut in_buffer = InBuffer::around(&self.in_buf[self.in_buf_pos..self.in_buf_limit]);
+   260	            let mut out_buffer = if self.decomp_pos < self.offset {
+   261	                // Dummy decompression until we get to offset
+   262	                let limit = (self.offset - self.decomp_pos).min(self.out_buf.len() as u64) as usize;
+   263	                OutBuffer::around(&mut self.out_buf[..limit])
+   264	            } else {
+   265	                // Bytes we still need to decompress, capped at usize::MAX
+   266	                let remaining: usize = self
+   267	                    .offset_limit
+   268	                    .saturating_sub(self.decomp_pos)
+   269	                    .try_into()
+   270	                    .unwrap_or(usize::MAX);
+   271	                let limit = buf.len().min(output_progress.saturating_add(remaining));
+   272	                OutBuffer::around(&mut buf[output_progress..limit])
+   273	            };
+   274	
+   275	            let in_len = self.in_buf_limit - self.in_buf_pos;
+   276	            while in_buffer.pos() < in_len {
+   277	                let pos = self.decomp_pos + out_buffer.pos() as u64;
+   278	                if out_buffer.pos() == out_buffer.capacity()
+   279	                    && !trailer_pending(self.frame_done, frame_end, pos)
+   280	                {
+   281	                    break;
+   282	                }
+   283	
+   284	                let (in_before, out_before) = (in_buffer.pos(), out_buffer.pos());
+   285	                let n = self
+   286	                    .dctx
+   287	                    .decompress_stream(&mut out_buffer, &mut in_buffer)?;
+   288	                // Given input and room for output, zstd always makes progress. The only call
+   289	                // made without room is the trailer drain, so a stall means the frame holds more
+   290	                // data than its seek table entry says.
+   291	                if in_buffer.pos() == in_before && out_buffer.pos() == out_before {
+   292	                    return Err(Error::frame_size_mismatch());
+   293	                }
+   294	
+   295	                // Frame end
+   296	                self.frame_done = n == 0;
+   297	                if self.frame_done {
+   298	                    let end = self.decomp_pos + out_buffer.pos() as u64;
+   299	                    if frame_end != Some(end) {
+   300	                        return Err(Error::frame_size_mismatch());
+   301	                    }
+   302	                    self.frame_idx += 1;
+   303	                    frame_end = self.seek_table.frame_end_decomp(self.frame_idx).ok();
+   304	                    // TODO: chain when stable
+   305	                    if let Some(pref) = prefix {
+   306	                        self.dctx
+   307	                            .reset(ResetDirective::SessionOnly)
+   308	                            .expect("Resetting session never fails");
+   309	                        self.dctx.ref_prefix(pref)?;
+   310	                    }
+   311	                }
+   312	            }
+   313	
+   314	            self.decomp_pos += out_buffer.pos() as u64;
+   315	            self.in_buf_pos += in_buffer.pos();
+   316	            self.read_compressed += in_buffer.pos() as u64;
+   317	
+   318	            // Only add progress if we actually wrote something to buf
+   319	            if self.decomp_pos > self.offset {
+   320	                self.offset += out_buffer.pos() as u64;
+   321	                output_progress += out_buffer.pos();
+   322	            }
+   323	        }
+   324	
+   325	        Ok(output_progress)
+   326	    }
+   327	}
+   328	
+   329	/// Whether a decompression context that sits at decompressed position `pos` still has to consume
+   330	/// the trailer of its current frame, which ends at `frame_end` (`None` past the last frame).
+   331	/// `frame_done` tells whether the context is between frames.
+   332	fn trailer_pending(frame_done: bool, frame_end: Option<u64>, pos: u64) -> bool {
+   333	    !frame_done && frame_end == Some(pos)
+   334	}
+   335	
+   336	impl<S: Seekable> Decoder<'_, S> {
+   337	    /// Decompresses data from the internal source.
+   338	    ///
+   339	    /// Call this repetetively to fill `buf` with decompressed data. Returns the number of bytes
+   340	    /// written to `buf`. Decompression is finished when no more bytes are written to `buf`.
+   341	    ///
+   342	    /// # Errors
+   343	    ///
+   344	    /// If decompression fails or any parameter is invalid.
+   345	    ///
+   346	    /// # Examples
+   347	    ///
+   348	    /// ```
+   349	    /// # use zeekstd::{BytesWrapper, RawEncoder};
+   350	    /// # let mut encoder = RawEncoder::new()?;
+   351	    /// # let mut seekable = [0u8; 128];
+   352	    /// # let prog = encoder.compress(b"Hello, World!", &mut seekable)?;
+   353	    /// # let end_prog = encoder.end_frame(&mut seekable[prog.out_progress()..])?;
+   354	    /// # let mut ser = encoder.into_seek_table().into_serializer();
+   355	    /// # let mut n = prog.out_progress() + end_prog.out_progress();
+   356	    /// # n += ser.write_into(&mut seekable[n..]);
+   357	    /// # let seekable = BytesWrapper::new(&seekable[..n]);
+   358	    /// use zeekstd::Decoder;
+   359	    ///
+   360	    /// let mut decoder = Decoder::new(seekable)?;
+   361	    /// // Make sure `buf` is big enough to hold all decompressed data
+   362	    /// let mut buf = [0u8; 128];
+   363	    /// let mut progress = 0;
+   364	    ///
+   365	    /// // Decompress in a loop until no more bytes are written to `buf`
+   275	}
+   276	
+   277	impl<'a> RawEncoder<'a> {
+   278	    /// Creates a new `RawEncoder` with the given [`EncodeOptions`].
+   279	    ///
+   280	    /// # Errors
+   281	    ///
+   282	    /// Fails if the raw encoder could not be created.
+   283	    pub fn with_opts(mut opts: EncodeOptions<'a>) -> Result<Self> {
+   284	        if let FrameSizePolicy::Uncompressed(0) | FrameSizePolicy::Compressed(0) = opts.frame_policy
+   285	        {
+   286	            return Err(Error::invalid_frame_size_policy());
+   287	        }
+   288	
+   289	        opts.cctx
+   290	            .set_parameter(CParameter::CompressionLevel(opts.compression_level))?;
+   291	        opts.cctx
+   292	            .set_parameter(CParameter::ChecksumFlag(opts.checksum_flag))?;
+   293	
+   294	        Ok(Self {
+   295	            cctx: opts.cctx,
+   296	            frame_policy: opts.frame_policy,
+   297	            frame_c_size: 0,
+   298	            frame_d_size: 0,
+   299	            seek_table: SeekTable::new(),
+   300	        })
+   301	    }
+   302	
+   303	    /// Performs a streaming compression step from `input` to `output`.
+   304	    ///
+   305	    /// Call this repetitively to consume the input stream. The returned [`CompressionProgress`]
+   306	    /// indicates how many bytes were consumed from `input` and written to `output`. The caller
+   307	    /// must check if `input` has been entirely consumed. If not, the caller must make some room
+   308	    /// to receive more compressed data, and then present again remaining input data.
+   309	    ///
+   310	    /// If a `prefix` is passed, it will be re-applied to every frame, as tables are discarded at
+   311	    /// end of frame. Referencing a prefix involves building tables, which is a CPU consuming
+   312	    /// operation, with non-negligible impact on latency. This should be avoided for small frame
+   313	    /// sizes. If there is a need to use the same prefix multiple times without long distance mode,
+   314	    /// consider loading a dictionary into the compression context instead.
+   315	    ///
+   316	    /// # Errors
+   317	    ///
+   318	    /// If compression fails or any parameter is invalid.
+   319	    pub fn compress_with_prefix<'b: 'a>(
+   320	        &mut self,
+   321	        input: &[u8],
+   322	        output: &mut [u8],
+   323	        prefix: Option<&'b [u8]>,
+   324	    ) -> Result<CompressionProgress> {
+   325	        if self.is_frame_complete() {
+   326	            let mut out_progress = 0;
+   327	            while out_progress < output.len() {
+   328	                let progress = self.end_frame(&mut output[out_progress..])?;
+   329	                out_progress += progress.out_progress;
+   330	                if progress.data_left == 0 {
+   331	                    break;
+   332	                }
+   333	            }
+   334	
+   335	            Ok(CompressionProgress::new(0, out_progress))
+   336	        } else {
+   337	            let limit = input.len().min(self.remaining_frame_size());
+   338	            let mut in_buf = InBuffer::around(&input[..limit]);
+   339	            let mut out_buf = OutBuffer::around(output);
+   340	            // Reference prefix at the beginning of a frame
+   341	            // TODO: chain when stable
+   342	            if let Some(pref) = prefix {
+   343	                if self.frame_d_size == 0 {
+   344	                    self.cctx.ref_prefix(pref)?;
+   345	                }
+   346	            }
+   347	
+   348	            while in_buf.pos() < limit && out_buf.pos() < out_buf.capacity() {
+   349	                self.cctx.compress_stream2(
+   350	                    &mut out_buf,
+   351	                    &mut in_buf,
+   352	                    ZSTD_EndDirective::ZSTD_e_continue,
+   353	                )?;
+   354	            }
+   355	
+   356	            // Casting should always be fine
+   357	            self.frame_c_size += out_buf.pos() as u32;
+   358	            self.frame_d_size += in_buf.pos() as u32;
+   359	
+   360	            Ok(CompressionProgress::new(in_buf.pos(), out_buf.pos()))
+   361	        }
+   362	    }
+   363	}
+   364	
+   365	impl RawEncoder<'_> {
+   366	    /// Creates a new `RawEncoder` with default parameters.
+   367	    ///
+   368	    /// This is equivalent to calling `EncodeOptions::new().into_raw_encoder()`.
+   369	    ///
+   370	    /// # Errors
+   371	    ///
+   372	    /// Fails if the raw encoder cannot be created.
+   373	    pub fn new() -> Result<Self> {
+   374	        Self::with_opts(EncodeOptions::new())
+   375	    }
+   376	
+   377	    /// Performs a streaming compression step from `input` to `output`.
+   378	    ///
+   379	    /// Call this repetitively to consume the input stream. The returned [`CompressionProgress`]
+   380	    /// indicates how many bytes were consumed from `input` and written to `output`. The caller
+   381	    /// must check if `input` has been entirely consumed. If not, the caller must make some room
+   382	    /// to receive more compressed data, and then present again remaining input data.
+   383	    ///
+   384	    /// # Errors
+   385	    ///
+   386	    /// If compression fails or any parameter is invalid.
+   387	    ///
+   388	    /// # Examples
+   389	    ///
+   390	    /// ```
+   391	    /// use zeekstd::RawEncoder;
+   392	    ///
+   393	    /// let mut encoder = RawEncoder::new()?;
+   394	    /// let input = b"Hello, World!";
+   395	    /// let mut output: Vec<u8> = vec![];
+   396	    /// let mut in_progress = 0;
+   397	    /// let mut buf = [0u8; 4];
+   398	    ///
+   399	    /// while in_progress < input.len() {
+   400	    ///     let prog = encoder.compress(&input[in_progress..], &mut buf)?;
+   401	    ///     output.extend(&buf[..prog.out_progress()]);
+   402	    ///     in_progress += prog.in_progress();
+   403	    /// }
+   404	    /// # Ok::<(), zeekstd::Error>(())
+   405	    /// ```
+   406	    pub fn compress(&mut self, input: &[u8], output: &mut [u8]) -> Result<CompressionProgress> {
+   407	        self.compress_with_prefix(input, output, None)
+   408	    }
+   409	
+   410	    /// Ends the current frame and adds it to the seek table.
+   411	    ///
+   412	    /// Call this repetitively to write the frame epilogue to `output`. The Encoder terminates
+   413	    /// frames during compression automatically according to the configured [`FrameSizePolicy`].
+   414	    /// Additionally this function can be used to end frames manually at any time during
+   415	    /// compression, however, you always need to end the last frame manually.
+   416	    ///
+   417	    /// The returned [`EpilogueProgress`] indicates how many bytes were written to `output` and
+   418	    /// provides a minimal estimation of how many bytes are left to flush. Should be called until
+   419	    /// no more bytes are left to flush.
+   420	    ///
+   421	    /// # Errors
+   422	    ///
+   423	    /// Fails if the frame epilogue cannot be written or the frame limit is reached.
+   424	    ///
+   425	    /// # Examples
+   426	    ///
+   427	    /// ```
+   428	    /// use zeekstd::RawEncoder;
+   429	    ///
+   430	    /// let mut encoder = RawEncoder::new()?;
+   431	    /// let mut output: Vec<u8> = vec![];
+   432	    /// let mut in_progress = 0;
+   433	    /// let mut buf = [0u8; 128];
+   434	    ///
+   435	    /// // Compress input data...
+   436	    ///
+   437	    /// loop {
+   438	    ///     let prog = encoder.end_frame(&mut buf)?;
+   439	    ///     output.extend(&buf[..prog.out_progress()]);
+   440	    ///     if prog.data_left() == 0 {
+   441	    ///         break;
+   442	    ///     }
+   443	    /// }
+   444	    /// # Ok::<(), zeekstd::Error>(())
+   445	    /// ```
+   446	    pub fn end_frame(&mut self, output: &mut [u8]) -> Result<EpilogueProgress> {
+   447	        let mut empty_buf = InBuffer::around(&[]);
+   448	        let mut out_buf = OutBuffer::around(output);
+   449	
+   450	        loop {
+   451	            let prev_out_pos = out_buf.pos();
+   452	            let n = self.cctx.compress_stream2(
+   453	                &mut out_buf,
+   454	                &mut empty_buf,
+   455	                ZSTD_EndDirective::ZSTD_e_end,
+   456	            )?;
+   457	
+   458	            // Casting should always be fine
+   459	            self.frame_c_size += (out_buf.pos() - prev_out_pos) as u32;
+   460	
+   461	            // Check first if writing the frame epilogue finished before checking whether the out
+   462	            // buffer is full. Changing the order leads to frames not beeing logged when the frame
+   463	            // epilogue fits exactly in the buffer.
+   464	            if n == 0 {
+   465	                break;
+   466	            }
+   467	
+   468	            if out_buf.pos() == out_buf.capacity() {
+   469	                // Indicate that more buffer space is required
+   470	                return Ok(EpilogueProgress::new(out_buf.pos(), n));
+   471	            }
+   472	        }
+   473	
+   474	        self.seek_table
+   475	            .log_frame(self.frame_c_size, self.frame_d_size)?;
+   476	        self.reset_frame();
+   477	
+   478	        // If we get here the frame is complete
+   479	        Ok(EpilogueProgress::new(out_buf.pos(), 0))
+   480	    }
+   481	
+   482	    /// Returns a reference to the internal [`SeekTable`].
+   483	    ///
+   484	    /// # Examples
+   485	    ///
+   486	    /// ```
+   487	    /// use zeekstd::RawEncoder;
+   488	    ///
+   489	    /// let mut encoder = RawEncoder::new()?;
+   490	    /// let seek_table = encoder.seek_table();
+   491	    ///
+   492	    /// assert_eq!(seek_table.num_frames(), 0);
+   493	    /// # Ok::<(), zeekstd::Error>(())
+   494	    /// ```
+   495	    pub fn seek_table(&self) -> &SeekTable {
+   496	        &self.seek_table
+   497	    }
+   498	
+   499	    /// Consumes this raw encoder and returns the internal [`SeekTable`].
+   500	    pub fn into_seek_table(self) -> SeekTable {
+   501	        self.seek_table
+   502	    }
+   503	
+   504	    /// Resets the current frame.
+   505	    ///
+   506	    /// This will discard any compression progress for the current frame and resets the
+   507	    /// compression session.
+   508	    #[allow(clippy::missing_panics_doc)]
+   509	    pub fn reset_frame(&mut self) {
+   510	        self.frame_c_size = 0;
+   511	        self.frame_d_size = 0;
+   512	        self.cctx
+   513	            .reset(ResetDirective::SessionOnly)
+   514	            .expect("Resetting session never fails");
+   515	    }
+   516	
+   517	    /// Resets the internal [`SeekTable`].
+   518	    ///
+   519	    /// Note that this does not reset the current frame, in most cases this function should be
+   520	    /// called together with `reset_frame()`.
+   521	    ///
+   522	    /// # Example
+   523	    ///
+   524	    /// ```
+   525	    /// # use zeekstd::RawEncoder;
+   526	    /// # let mut encoder = RawEncoder::new()?;
+   527	    /// encoder.reset_frame();
+   528	    /// encoder.reset_seek_table();
+   529	    /// assert_eq!(encoder.seek_table().num_frames(), 0);
+   530	    /// # Ok::<(), zeekstd::Error>(())
+   531	    /// ```
+   532	    pub fn reset_seek_table(&mut self) {
+   533	        self.seek_table = SeekTable::new();
+   534	    }
+   535	
+   536	    fn remaining_frame_size(&self) -> usize {
+   537	        let n = match self.frame_policy {
+   538	            FrameSizePolicy::Compressed(_) => MAX_FRAME_SIZE - self.frame_d_size,
+   539	            FrameSizePolicy::Uncompressed(limit) => MAX_FRAME_SIZE.min(limit) - self.frame_d_size,
+   540	        };
+   541	
+   542	        n.try_into().expect("Remaining frame size fits in usize")
+   543	    }
+   544	
+   545	    fn is_frame_complete(&self) -> bool {
+   546	        match self.frame_policy {
+   547	            FrameSizePolicy::Compressed(size) => {
+   548	                size <= self.frame_c_size || MAX_FRAME_SIZE <= self.frame_d_size
+   549	            }
+   550	            FrameSizePolicy::Uncompressed(limit) => MAX_FRAME_SIZE.min(limit) <= self.frame_d_size,
+   551	        }
+   552	    }
+   553	}
+   554	
+   555	/// A single-use seekable encoder.
+   556	///
+   557	/// The `Encoder` starts new frames automatically at 2MiB of uncompressed data by default. See
+   558	/// [`EncodeOptions`] to change this and other compression parameters.
+   559	///
+   560	/// # Examples
+   561	///
+   562	/// Creates a seekable compressed file using an `Encoder`.
+   563	///
+   564	/// ```no_run
+   565	/// use std::{fs::File, io};
+   566	/// use zeekstd::Encoder;
+   567	///
+   568	/// let mut input = File::open("foo")?;
+   569	/// let output = File::create("foo.zst")?;
+   570	/// let mut encoder = Encoder::new(output)?;
+
+exec
+/run/current-system/sw/bin/zsh -lc "nl -ba lib/src/encode.rs | sed -n '575,850p'; nl -ba lib/src/seekable.rs | sed -n '1,200p'; nl -ba lib/src/error.rs | sed -n '1,235p'; rg -n 'end_frame|compress_with_prefix|finish_format|read_exact|decompress' lib/tests cli/src fuzz -g '*.rs'; git log --oneline -8" in /home/at/code/rust/zeekstd
+ succeeded in 0ms:
+   575	/// ```
+   576	#[cfg(feature = "std")]
+   577	#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+   578	pub struct Encoder<'a, W> {
+   579	    raw: RawEncoder<'a>,
+   580	    /// Compressed bytes on their way to the writer: `out_buf[out_buf_written..out_buf_pos]` still
+   581	    /// has to be written, `out_buf[out_buf_pos..]` is free.
+   582	    out_buf: Vec<u8>,
+   583	    out_buf_written: usize,
+   584	    out_buf_pos: usize,
+   585	    writer: W,
+   586	    written_compressed: u64,
+   587	}
+   588	
+   589	#[cfg(feature = "std")]
+   590	impl<'a, W> Encoder<'a, W> {
+   591	    /// Creates a new `Encoder` with default parameters.
+   592	    ///
+   593	    /// This is equivalent to calling `EncodeOptions::new().into_encoder(writer)`.
+   594	    ///
+   595	    /// # Errors
+   596	    ///
+   597	    /// Fails if the encoder could not be created.
+   598	    pub fn new(writer: W) -> Result<Self> {
+   599	        Self::with_opts(writer, EncodeOptions::new())
+   600	    }
+   601	
+   602	    /// Creates a new `Encoder` with the given [`EncodeOptions`].
+   603	    ///
+   604	    /// # Errors
+   605	    ///
+   606	    /// Fails if the encoder could not be created.
+   607	    pub fn with_opts(writer: W, opts: EncodeOptions<'a>) -> Result<Self> {
+   608	        Ok(Self {
+   609	            raw: opts.into_raw_encoder()?,
+   610	            out_buf: alloc::vec![0; CCtx::out_size()],
+   611	            out_buf_written: 0,
+   612	            out_buf_pos: 0,
+   613	            writer,
+   614	            written_compressed: 0,
+   615	        })
+   616	    }
+   617	}
+   618	
+   619	#[cfg(feature = "std")]
+   620	impl<W> Encoder<'_, W> {
+   621	    /// Returns a reference to the internal [`SeekTable`].
+   622	    pub fn seek_table(&self) -> &SeekTable {
+   623	        &self.raw.seek_table
+   624	    }
+   625	
+   626	    /// The total number of compressed bytes that have been written to the internal writer.
+   627	    pub fn written_compressed(&self) -> u64 {
+   628	        self.written_compressed
+   629	    }
+   630	
+   631	    /// Converts this encoder into the internal [`SeekTable`].
+   632	    pub fn into_seek_table(self) -> SeekTable {
+   633	        self.raw.into_seek_table()
+   634	    }
+   635	}
+   636	
+   637	#[cfg(feature = "std")]
+   638	impl<'a, W: std::io::Write> Encoder<'a, W> {
+   639	    /// Consumes and compresses input data from `buf`.
+   640	    ///
+   641	    /// Call this repetitively to consume input data. Compressed data gets written to the internal
+   642	    /// writer. Returns the number of bytes consumed from `buf`.
+   643	    ///
+   644	    /// If a `prefix` is provided, it will be re-applied to every frame, as tables are discarded at
+   645	    /// end of frame. Referencing a prefix involves building tables, which is a CPU consuming
+   646	    /// operation, with non-negligible impact on latency. This should be avoided for small frame
+   647	    /// sizes. If there is a need to use the same prefix multiple times without long distance mode,
+   648	    /// consider loading a dictionary into the compression context instead.
+   649	    ///
+   650	    /// # Errors
+   651	    ///
+   652	    /// If compression fails or any parameter is invalid.
+   653	    pub fn compress_with_prefix<'b: 'a>(
+   654	        &mut self,
+   655	        buf: &[u8],
+   656	        prefix: Option<&'b [u8]>,
+   657	    ) -> Result<usize> {
+   658	        let mut input_progress = 0;
+   659	
+   660	        while input_progress < buf.len() {
+   661	            // Consumed input cannot be handed back, so no write error may follow it within one
+   662	            // call: make room before compressing, and once some input went in, leave the error
+   663	            // for the next call to report.
+   664	            match self.flush_out_buf(false) {
+   665	                Ok(()) => {}
+   666	                Err(err) if input_progress == 0 => return Err(err),
+   667	                Err(_) => break,
+   668	            }
+   669	
+   670	            let progress = self.raw.compress_with_prefix(
+   671	                &buf[input_progress..],
+   672	                &mut self.out_buf[self.out_buf_pos..],
+   673	                prefix,
+   674	            )?;
+   675	
+   676	            if progress.in_progress == 0 && progress.out_progress == 0 {
+   677	                break;
+   678	            }
+   679	
+   680	            self.out_buf_pos += progress.out_progress;
+   681	            input_progress += progress.in_progress;
+   682	        }
+   683	
+   684	        Ok(input_progress)
+   685	    }
+   686	}
+   687	
+   688	#[cfg(feature = "std")]
+   689	impl<W: std::io::Write> Encoder<'_, W> {
+   690	    /// Consumes and compresses input data from `buf`.
+   691	    ///
+   692	    /// Call this repetitively to consume input data. Compressed data gets written to the internal
+   693	    /// writer. Returns the number of bytes consumed from `buf`.
+   694	    ///
+   695	    /// # Examples
+   696	    ///
+   697	    /// ```no_run
+   698	    /// use std::fs::File;
+   699	    /// use zeekstd::Encoder;
+   700	    ///
+   701	    /// let output = File::create("data.zst")?;
+   702	    /// let mut encoder = Encoder::new(output)?;
+   703	    ///
+   704	    /// encoder.compress(b"Hello, World!")?;
+   705	    /// # Ok::<(), zeekstd::Error>(())
+   706	    ///
+   707	    /// ```
+   708	    ///
+   709	    /// # Errors
+   710	    ///
+   711	    /// If compression fails or any parameter is invalid.
+   712	    pub fn compress(&mut self, buf: &[u8]) -> Result<usize> {
+   713	        self.compress_with_prefix(buf, None)
+   714	    }
+   715	
+   716	    /// Ends the current frame.
+   717	    ///
+   718	    /// Call this to write the frame epilogue to the internal writer. Returns the number of bytes
+   719	    /// written.
+   720	    ///
+   721	    /// # Errors
+   722	    ///
+   723	    /// Fails if the frame epilogue cannot be written or the frame limit is reached.
+   724	    pub fn end_frame(&mut self) -> Result<usize> {
+   725	        let mut progress = 0;
+   726	
+   727	        loop {
+   728	            self.flush_out_buf(false)?;
+   729	            let prog = self.raw.end_frame(&mut self.out_buf[self.out_buf_pos..])?;
+   730	            self.out_buf_pos += prog.out_progress;
+   731	            progress += prog.out_progress;
+   732	
+   733	            if prog.data_left == 0 {
+   734	                return Ok(progress);
+   735	            }
+   736	        }
+   737	    }
+   738	
+   739	    /// Ends the current frame and writes the seek table.
+   740	    ///
+   741	    /// Call this to write the seek table in `Foot` format to the internal writer. Returns the
+   742	    /// total number of bytes, i.e. all compressed data plus the size of the seek table,
+   743	    /// written by this `Encoder`.
+   744	    ///
+   745	    /// # Examples
+   746	    ///
+   747	    /// ```no_run
+   748	    /// use std::fs::File;
+   749	    /// use zeekstd::Encoder;
+   750	    ///
+   751	    /// let output = File::create("data.zst")?;
+   752	    /// let mut encoder = Encoder::new(output)?;
+   753	    ///
+   754	    /// encoder.compress(b"Hello")?;
+   755	    /// encoder.finish()?;
+   756	    /// # Ok::<(), zeekstd::Error>(())
+   757	    ///
+   758	    /// ```
+   759	    ///
+   760	    /// # Errors
+   761	    ///
+   762	    /// Fails if the frame cannot be finished or writing the seek table fails.
+   763	    pub fn finish(self) -> Result<u64> {
+   764	        self.finish_format(Format::Foot)
+   765	    }
+   766	
+   767	    /// Ends the current frame and writes the seek table in the given format.
+   768	    ///
+   769	    /// Returns the total number of bytes, i.e. all compressed data plus the size of the seek table,
+   770	    /// written by this `Encoder`.
+   771	    ///
+   772	    /// # Errors
+   773	    ///
+   774	    /// Fails if the frame cannot be finished or writing the seek table fails.
+   775	    pub fn finish_format(mut self, format: Format) -> Result<u64> {
+   776	        self.end_frame()?;
+   777	        self.flush_out_buf(true)?;
+   778	        // Nothing can be retried from here on, `self` is consumed, so plain `write_all` will do
+   779	        let mut ser = self.raw.into_seek_table().into_format_serializer(format);
+   780	
+   781	        loop {
+   782	            let n = ser.write_into(&mut self.out_buf);
+   783	            if n == 0 {
+   784	                break;
+   785	            }
+   786	
+   787	            self.writer.write_all(&self.out_buf[..n])?;
+   788	            self.written_compressed += n as u64;
+   789	        }
+   790	
+   791	        self.writer.flush()?;
+   792	
+   793	        Ok(self.written_compressed)
+   794	    }
+   795	
+   796	    /// Writes the buffered compressed bytes to the writer, if the buffer is full or `force` is
+   797	    /// true.
+   798	    ///
+   799	    /// Bytes the writer accepts leave the buffer at once, so when a write fails partway, only the
+   800	    /// bytes still owed remain: calling this again resumes there and never resends a prefix.
+   801	    fn flush_out_buf(&mut self, force: bool) -> Result<()> {
+   802	        if self.out_buf_pos < self.out_buf.len() && !force {
+   803	            return Ok(());
+   804	        }
+   805	
+   806	        while self.out_buf_written < self.out_buf_pos {
+   807	            let pending = &self.out_buf[self.out_buf_written..self.out_buf_pos];
+   808	            match self.writer.write(pending) {
+   809	                Ok(0) => {
+   810	                    return Err(std::io::Error::new(
+   811	                        std::io::ErrorKind::WriteZero,
+   812	                        "failed to write whole buffer",
+   813	                    )
+   814	                    .into());
+   815	                }
+   816	                Ok(n) => {
+   817	                    assert!(
+   818	                        n <= pending.len(),
+   819	                        "writer accepted more bytes than it was given"
+   820	                    );
+   821	                    self.out_buf_written += n;
+   822	                    self.written_compressed += n as u64;
+   823	                }
+   824	                Err(err) if err.kind() == std::io::ErrorKind::Interrupted => {}
+   825	                Err(err) => return Err(err.into()),
+   826	            }
+   827	        }
+   828	
+   829	        self.out_buf_written = 0;
+   830	        self.out_buf_pos = 0;
+   831	
+   832	        Ok(())
+   833	    }
+   834	}
+   835	
+   836	#[cfg(feature = "std")]
+   837	impl<W: std::io::Write> std::io::Write for Encoder<'_, W> {
+   838	    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+   839	        Ok(self.compress(buf)?)
+   840	    }
+   841	
+   842	    fn flush(&mut self) -> std::io::Result<()> {
+   843	        self.flush_out_buf(true)?;
+   844	        self.writer.flush()
+   845	    }
+   846	}
+   847	
+   848	#[cfg(test)]
+   849	mod tests {
+   850	    use alloc::vec;
+     1	// Model-output: Claude Fable 5.1
+     2	use crate::{
+     3	    SEEK_TABLE_INTEGRITY_SIZE, SKIPPABLE_HEADER_SIZE,
+     4	    error::{Error, Result},
+     5	    seek_table::Format,
+     6	};
+     7	
+     8	/// Enumeration of possible methods to set the offset within a [`Seekable`] object.
+     9	pub enum OffsetFrom {
+    10	    /// Sets the offset to the provided number of bytes.
+    11	    Start(u64),
+    12	    /// Sets the offset to the size of this object plus the specified number of bytes.
+    13	    End(i64),
+    14	}
+    15	
+    16	/// Represents a seekable source.
+    17	pub trait Seekable {
+    18	    /// Sets the read offset from the start of the seekable.
+    19	    ///
+    20	    /// If successful, returns the new position from the start of the seekable.
+    21	    ///
+    22	    /// # Errors
+    23	    ///
+    24	    /// Fails if the offset cannot be set. e.g. because it is out of range.
+    25	    fn set_offset(&mut self, offset: OffsetFrom) -> Result<u64>;
+    26	
+    27	    /// Pull some bytes from this source into `buf`, returning how many bytes were read.
+    28	    ///
+    29	    /// # Errors
+    30	    ///
+    31	    /// If the read operation fails.
+    32	    fn read(&mut self, buf: &mut [u8]) -> Result<usize>;
+    33	
+    34	    /// Returns the integrity field of this seekable.
+    35	    ///
+    36	    /// # Errors
+    37	    ///
+    38	    /// Fails if the integrity field cannot be retrieved.
+    39	    fn seek_table_integrity(&mut self, format: Format) -> Result<[u8; SEEK_TABLE_INTEGRITY_SIZE]>;
+    40	}
+    41	
+    42	/// A seekable wrapper around a byte slice.
+    43	#[derive(Debug, Clone)]
+    44	pub struct BytesWrapper<'a> {
+    45	    src: &'a [u8],
+    46	    pos: usize,
+    47	}
+    48	
+    49	impl<'a> BytesWrapper<'a> {
+    50	    /// Returns a new `BytesWrapper` around the given slice.
+    51	    pub fn new(src: &'a [u8]) -> Self {
+    52	        Self { src, pos: 0 }
+    53	    }
+    54	}
+    55	
+    56	impl Seekable for BytesWrapper<'_> {
+    57	    fn set_offset(&mut self, offset: OffsetFrom) -> Result<u64> {
+    58	        let pos = match offset {
+    59	            OffsetFrom::Start(pos) => usize::try_from(pos).ok(),
+    60	            OffsetFrom::End(delta) => isize::try_from(delta)
+    61	                .map(|d| self.src.len().checked_add_signed(d))
+    62	                .ok()
+    63	                .flatten(),
+    64	        }
+    65	        .ok_or(Error::offset_out_of_range())?;
+    66	
+    67	        if pos > self.src.len() {
+    68	            return Err(Error::offset_out_of_range());
+    69	        }
+    70	
+    71	        self.pos = pos;
+    72	
+    73	        Ok(pos as u64)
+    74	    }
+    75	
+    76	    fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+    77	        let len = buf.len().min(self.src.len() - self.pos);
+    78	        buf[..len].copy_from_slice(&self.src[self.pos..self.pos + len]);
+    79	        self.pos += len;
+    80	
+    81	        Ok(len)
+    82	    }
+    83	
+    84	    fn seek_table_integrity(&mut self, format: Format) -> Result<[u8; SEEK_TABLE_INTEGRITY_SIZE]> {
+    85	        let offset = match format {
+    86	            Format::Head => (self.src.len() >= SKIPPABLE_HEADER_SIZE + SEEK_TABLE_INTEGRITY_SIZE)
+    87	                .then_some(SKIPPABLE_HEADER_SIZE),
+    88	            // Last 9 bytes
+    89	            Format::Foot => self.src.len().checked_sub(SEEK_TABLE_INTEGRITY_SIZE),
+    90	        }
+    91	        .ok_or(Error::offset_out_of_range())?;
+    92	
+    93	        let mut buf = [0u8; SEEK_TABLE_INTEGRITY_SIZE];
+    94	        buf.copy_from_slice(&self.src[offset..offset + SEEK_TABLE_INTEGRITY_SIZE]);
+    95	
+    96	        Ok(buf)
+    97	    }
+    98	}
+    99	
+   100	#[cfg(feature = "std")]
+   101	impl From<OffsetFrom> for std::io::SeekFrom {
+   102	    fn from(value: OffsetFrom) -> Self {
+   103	        use std::io::SeekFrom;
+   104	
+   105	        match value {
+   106	            OffsetFrom::Start(n) => SeekFrom::Start(n),
+   107	            OffsetFrom::End(n) => SeekFrom::End(n),
+   108	        }
+   109	    }
+   110	}
+   111	
+   112	#[cfg(feature = "std")]
+   113	impl<T> Seekable for T
+   114	where
+   115	    T: std::io::Read + std::io::Seek,
+   116	{
+   117	    fn set_offset(&mut self, offset: OffsetFrom) -> Result<u64> {
+   118	        Ok(self.seek(offset.into())?)
+   119	    }
+   120	
+   121	    fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+   122	        // A caller of `Seekable` cannot tell an interruption from a failure, so retry it here, as
+   123	        // `read_exact` does
+   124	        loop {
+   125	            match std::io::Read::read(self, buf) {
+   126	                Err(err) if err.kind() == std::io::ErrorKind::Interrupted => {}
+   127	                res => return Ok(res?),
+   128	            }
+   129	        }
+   130	    }
+   131	
+   132	    fn seek_table_integrity(&mut self, format: Format) -> Result<[u8; SEEK_TABLE_INTEGRITY_SIZE]> {
+   133	        match format {
+   134	            Format::Head => self.seek(std::io::SeekFrom::Start(SKIPPABLE_HEADER_SIZE as u64))?,
+   135	            // Last 9 bytes
+   136	            Format::Foot => {
+   137	                self.seek(std::io::SeekFrom::End(-(SEEK_TABLE_INTEGRITY_SIZE as i64)))?
+   138	            }
+   139	        };
+   140	
+   141	        let mut buf = [0u8; SEEK_TABLE_INTEGRITY_SIZE];
+   142	        self.read_exact(&mut buf)?;
+   143	
+   144	        Ok(buf)
+   145	    }
+   146	}
+     1	// Model-output: Claude Fable 5.1
+     2	// Model-output: Claude Opus 5
+     3	use zstd_safe::{ErrorCode, get_error_name, zstd_sys::ZSTD_ErrorCode};
+     4	
+     5	/// A `Result` alias where the `Err` case is `zeekstd::Error`.
+     6	pub type Result<T> = core::result::Result<T, Error>;
+     7	
+     8	/// The errors that may occur when working with this crate.
+     9	#[derive(Debug)]
+    10	pub struct Error {
+    11	    kind: Kind,
+    12	}
+    13	
+    14	impl Error {
+    15	    /// Returns true if the error origins from a failed number conversion.
+    16	    pub fn is_number_conversion_failed(&self) -> bool {
+    17	        matches!(self.kind, Kind::NumberConversionFailed(_))
+    18	    }
+    19	
+    20	    pub(crate) fn offset_out_of_range() -> Self {
+    21	        Self {
+    22	            kind: Kind::OffsetOutOfRange,
+    23	        }
+    24	    }
+    25	
+    26	    /// Returns true if the error origins from an out of range offset.
+    27	    pub fn is_offset_out_of_range(&self) -> bool {
+    28	        matches!(self.kind, Kind::OffsetOutOfRange)
+    29	    }
+    30	
+    31	    pub(crate) fn frame_index_too_large() -> Self {
+    32	        Self {
+    33	            kind: Kind::FrameIndexTooLarge,
+    34	        }
+    35	    }
+    36	
+    37	    /// Returns true if the error is related to a frame index that is too large.
+    38	    pub fn is_frame_index_too_large(&self) -> bool {
+    39	        matches!(self.kind, Kind::FrameIndexTooLarge)
+    40	    }
+    41	
+    42	    pub(crate) fn invalid_frame_size_policy() -> Self {
+    43	        Self {
+    44	            kind: Kind::InvalidFrameSizePolicy,
+    45	        }
+    46	    }
+    47	
+    48	    /// Returns true if the error is related to a frame size policy that is invalid.
+    49	    pub fn is_invalid_frame_size_policy(&self) -> bool {
+    50	        matches!(self.kind, Kind::InvalidFrameSizePolicy)
+    51	    }
+    52	
+    53	    pub(crate) fn unexpected_eof() -> Self {
+    54	        Self {
+    55	            kind: Kind::UnexpectedEof,
+    56	        }
+    57	    }
+    58	
+    59	    /// Returns true if the seekable source ended inside a frame.
+    60	    pub fn is_unexpected_eof(&self) -> bool {
+    61	        matches!(self.kind, Kind::UnexpectedEof)
+    62	    }
+    63	
+    64	    pub(crate) fn frame_size_mismatch() -> Self {
+    65	        Self {
+    66	            kind: Kind::FrameSizeMismatch,
+    67	        }
+    68	    }
+    69	
+    70	    /// Returns true if a frame's decompressed size differs from its seek table entry.
+    71	    pub fn is_frame_size_mismatch(&self) -> bool {
+    72	        matches!(self.kind, Kind::FrameSizeMismatch)
+    73	    }
+    74	
+    75	    pub(crate) fn zstd(code: ZSTD_ErrorCode) -> Self {
+    76	        let wrapped = 0_usize.wrapping_sub(code as usize);
+    77	        Self {
+    78	            kind: Kind::Zstd(wrapped),
+    79	        }
+    80	    }
+    81	
+    82	    /// Returns true if the error origins from an IO error.
+    83	    #[cfg(feature = "std")]
+    84	    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    85	    pub fn is_io(&self) -> bool {
+    86	        matches!(self.kind, Kind::IO(_))
+    87	    }
+    88	
+    89	    /// Returns true if the error origins from the zstd library.
+    90	    pub fn is_zstd(&self) -> bool {
+    91	        matches!(self.kind, Kind::Zstd(_))
+    92	    }
+    93	}
+    94	
+    95	impl core::fmt::Display for Error {
+    96	    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    97	        match &self.kind {
+    98	            Kind::NumberConversionFailed(err) => write!(f, "number conversion failed: {err}"),
+    99	            Kind::OffsetOutOfRange => f.write_str("offset out of range"),
+   100	            Kind::FrameIndexTooLarge => f.write_str("frame index too large"),
+   101	            Kind::InvalidFrameSizePolicy => f.write_str("invalid frame size policy"),
+   102	            Kind::UnexpectedEof => f.write_str("seekable source ended inside a frame"),
+   103	            Kind::FrameSizeMismatch => {
+   104	                f.write_str("frame's decompressed size differs from its seek table entry")
+   105	            }
+   106	            #[cfg(feature = "std")]
+   107	            Kind::IO(err) => write!(f, "io error: {err}"),
+   108	            Kind::Zstd(code) => f.write_str(get_error_name(*code)),
+   109	        }
+   110	    }
+   111	}
+   112	
+   113	impl core::error::Error for Error {}
+   114	
+   115	impl From<core::num::TryFromIntError> for Error {
+   116	    fn from(value: core::num::TryFromIntError) -> Self {
+   117	        Self {
+   118	            kind: Kind::NumberConversionFailed(value),
+   119	        }
+   120	    }
+   121	}
+   122	
+   123	#[cfg(feature = "std")]
+   124	#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+   125	impl From<std::io::Error> for Error {
+   126	    fn from(value: std::io::Error) -> Self {
+   127	        Self {
+   128	            kind: Kind::IO(value),
+   129	        }
+   130	    }
+   131	}
+   132	
+   133	#[cfg(feature = "std")]
+   134	#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+   135	impl From<Error> for std::io::Error {
+   136	    /// Hands back the original IO error, so that its kind can be acted on, and gives a truncated
+   137	    /// source the matching [`std::io::ErrorKind::UnexpectedEof`]. Any other error is wrapped as
+   138	    /// [`std::io::ErrorKind::Other`].
+   139	    fn from(value: Error) -> Self {
+   140	        match value.kind {
+   141	            Kind::IO(err) => err,
+   142	            Kind::UnexpectedEof => Self::new(std::io::ErrorKind::UnexpectedEof, value),
+   143	            _ => Self::other(value),
+   144	        }
+   145	    }
+   146	}
+   147	
+   148	impl From<ErrorCode> for Error {
+   149	    fn from(value: ErrorCode) -> Self {
+   150	        Self {
+   151	            kind: Kind::Zstd(value),
+   152	        }
+   153	    }
+   154	}
+   155	
+   156	enum Kind {
+   157	    /// Out of range integral type conversion attempted
+   158	    NumberConversionFailed(core::num::TryFromIntError),
+   159	    /// The desired offset is out of range.
+   160	    OffsetOutOfRange,
+   161	    /// The passed frame index is too large.
+   162	    FrameIndexTooLarge,
+   163	    /// The frame size policy is invalid.
+   164	    InvalidFrameSizePolicy,
+   165	    /// The seekable source ended inside a frame.
+   166	    UnexpectedEof,
+   167	    /// A frame's decompressed size differs from its seek table entry.
+   168	    FrameSizeMismatch,
+   169	    /// IO error.
+   170	    #[cfg(feature = "std")]
+   171	    IO(std::io::Error),
+   172	    /// An error from the zstd library.
+   173	    Zstd(ErrorCode),
+   174	}
+   175	
+   176	impl core::fmt::Debug for Kind {
+   177	    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+   178	        match self {
+   179	            Self::NumberConversionFailed(arg0) => {
+   180	                f.debug_tuple("NumberConversionFailed").field(arg0).finish()
+   181	            }
+   182	            Self::OffsetOutOfRange => write!(f, "OffsetOutOfRange"),
+   183	            Self::FrameIndexTooLarge => write!(f, "FrameIndexTooLarge"),
+   184	            Self::InvalidFrameSizePolicy => write!(f, "InvalidFrameSizePolicy"),
+   185	            Self::UnexpectedEof => write!(f, "UnexpectedEof"),
+   186	            Self::FrameSizeMismatch => write!(f, "FrameSizeMismatch"),
+   187	            #[cfg(feature = "std")]
+   188	            Self::IO(arg0) => f.debug_tuple("IO").field(arg0).finish(),
+   189	            Self::Zstd(c) => write!(f, "{}; code {}", zstd_safe::get_error_name(*c), c),
+   190	        }
+   191	    }
+   192	}
+rg: lib/tests: No such file or directory (os error 2)
+cli/src/main.rs:9:mod decompress;
+cli/src/main.rs:11:/// Compress and decompress data using the Zstandard Seekable Format.
+fuzz/fuzz_targets/roundtrip_basic.rs:19:    let mut decompressed = Vec::new();
+fuzz/fuzz_targets/roundtrip_basic.rs:20:    decoder.read_to_end(&mut decompressed).unwrap();
+fuzz/fuzz_targets/roundtrip_basic.rs:22:    assert_eq!(data, &decompressed);
+fuzz/fuzz_targets/roundtrip_seek.rs:38:        let mut decompressed = Vec::new();
+fuzz/fuzz_targets/roundtrip_seek.rs:39:        decoder.read_to_end(&mut decompressed).unwrap();
+fuzz/fuzz_targets/roundtrip_seek.rs:41:        assert_eq!(&data[offset..], &decompressed);
+cli/src/compress.rs:78:                    .compress_with_prefix(input, prefix)
+cli/src/compress.rs:87:                    .end_frame()
+cli/src/args.rs:241:    /// The offset (of the uncompressed data) where decompression starts.
+cli/src/args.rs:245:    /// The frame number at which decompression starts.
+cli/src/args.rs:249:    /// The offset (of the decompressed data) where decompression ends.
+cli/src/args.rs:255:    /// The frame number at which decompression ends (inclusive).
+cli/src/args.rs:419:    fn decompress_end_frame() {
+cli/src/command.rs:17:    decompress::Decompressor,
+cli/src/command.rs:231:                let decompressor = Decompressor::new(&args, prefix_len, flags.progress_style())?;
+cli/src/command.rs:234:                    decompressor,
+cli/src/command.rs:253:                let end_frame = if let Some(num) = args.num_frames {
+cli/src/command.rs:265:                    end_frame,
+cli/src/command.rs:291:        decompressor: Decompressor<'a>,
+cli/src/command.rs:299:        end_frame: Option<u32>,
+cli/src/command.rs:337:                decompressor,
+cli/src/command.rs:344:                let written = decompressor.decompress_into(&mut writer, prefix.as_deref())?;
+cli/src/command.rs:357:                end_frame,
+cli/src/command.rs:360:                if start_frame.is_none() && end_frame.is_none() && !detail {
+cli/src/command.rs:363:                    list_frames(&seek_table, start_frame, end_frame, self.byte_fmt)?;
+cli/src/command.rs:434:    end_frame: Option<u32>,
+cli/src/command.rs:440:    let end = end_frame.unwrap_or_else(|| st.num_frames() - 1);
+cli/src/decompress.rs:33:            .context("Failed to get decompression offset")?;
+cli/src/decompress.rs:37:            .context("Failed to get decompression offset limit")?;
+cli/src/decompress.rs:53:        let mut dctx = DCtx::try_create().context("Failed to create decompression context")?;
+cli/src/decompress.rs:77:    pub fn decompress_into<'b: 'a, W: Write>(
+cli/src/decompress.rs:89:                .decompress_with_prefix(&mut buf[buf_pos..], prefix)
+cli/src/decompress.rs:90:                .context("Failed to decompress data")?;
+cli/src/decompress.rs:101:                    .context("Failed to write decompressed data")?;
+cli/src/decompress.rs:109:            .context("Failed to write decompressed data")?;
+977fc5c lib: merge worktree-error-recovery; map UnexpectedEof to io::ErrorKind::UnexpectedEof
+fdd6f54 lib: route Decoder's Read impl through From<Error> for io::Error
+92c2102 lib: verify frame trailer at the offset limit; error on truncated source and seek table size mismatch
+7aaf00e lib: make Encoder and Decoder safe to retry after IO errors; preserve io::ErrorKind; retry Interrupted reads
+9c6533b Merge pull request #90 from ivan/frame-size-0
+06f093f lib: forbid frame_size of 0 to avoid infinite loop
+8d3f7b4 Merge pull request #91 from ivan/vec-capacity
+11b509a lib: don't allocate more capacity than needed
+
+exec
+/run/current-system/sw/bin/zsh -lc 'cargo test --workspace; cargo test -p zeekstd --no-default-features' in /home/at/code/rust/zeekstd
+ succeeded in 5874ms:
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.60s
+     Running unittests src/lib.rs (target/debug/build/zeekstd/62e628579f984cae/out/zeekstd-62e628579f984cae)
+
+running 47 tests
+test decode::tests::decompress_and_reset ... ok
+test decode::tests::checksum_verified_when_limit_is_at_an_inner_frame_end ... ok
+test decode::tests::set_frame_boundaries ... ok
+test decode::tests::reset_decompression ... ok
+test decode::tests::seek_table_that_disagrees_with_frame_is_rejected ... ok
+test decode::tests::truncated_source_reads_as_unexpected_eof ... ok
+test decode::tests::checksum_verified_when_trailer_arrives_in_a_later_read ... ok
+test encode::tests::raw_encoder_forbids_compressed_frame_size_0 ... ok
+test decode::tests::set_offset_boundaries ... ok
+test decode::tests::truncated_source_is_rejected ... ok
+test decode::tests::decompress_last_frames ... ok
+test decode::tests::source_that_ends_at_the_last_frame_is_accepted ... ok
+test encode::tests::raw_encoder_forbids_uncompressed_frame_size_0 ... ok
+test encode::tests::raw_encoder_reset ... ok
+test decode::tests::decompress_until_upper_frame ... ok
+test encode::tests::checksum ... ok
+test decode::tests::options ... ok
+test decode::tests::decompress_everything_after_partly_decompression ... ok
+test decode::tests::decompress_within_offset_boundaries ... ok
+test decode::tests::upper_frame_greater_than_lower_frame ... ok
+test decode::tests::small_reads_restore_everything ... ok
+test tests::patch_cycle ... ok
+test seek_table::tests::frame_functions ... ok
+test tests::cycle_stand_alone_seek_table_head ... ok
+test decode::tests::checksum_verified_when_trailer_starts_at_input_buffer_boundary ... ok
+test tests::cycle ... ok
+test tests::cycle_stand_alone_seek_table_foot ... ok
+test tests::cycle_std ... ok
+test decode::tests::seek_decoder ... ok
+test decode::tests::set_offset_within_frame_continues_decompression ... ok
+test decode::tests::io_errors::read_errors_never_lose_output ... ok
+test decode::tests::io_errors::interrupted_reads_are_retried_internally ... ok
+test encode::tests::io_errors::write_errors_never_corrupt_the_archive ... ok
+test encode::tests::io_errors::interrupted_writes_are_retried_internally ... ok
+test tests::patch_cycle_custom_compressed_frame_size ... ok
+test seek_table::tests::deserialize_compatible_with_zstd_seekable ... ok
+test tests::cycle_stand_alone_seek_table_foot_custom_compressed_frame_size ... ok
+test tests::cycle_custom_compressed_frame_size_std ... ok
+test tests::cycle_custom_compressed_frame_size ... ok
+test seek_table::tests::serialize_compatible_with_zstd_seekable ... ok
+test seek_table::tests::serde_cycle ... ok
+test seek_table::tests::serialize ... ok
+test seek_table::tests::serde_cycle_std ... ok
+test tests::cycle_custom_decompressed_frame_size_std ... ok
+test tests::cycle_custom_decompressed_frame_size ... ok
+test tests::cycle_stand_alone_seek_table_foot_custom_decompressed_frame_size ... ok
+test tests::patch_cycle_custom_decompressed_frame_size ... ok
+
+test result: ok. 47 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.12s
+
+     Running unittests src/main.rs (target/debug/build/zeekstd_cli/4688492e1be19652/out/zeekstd-4688492e1be19652)
+
+running 11 tests
+test args::tests::decompress_end_frame ... ok
+test args::tests::test_byte_value_from_str_missing_value ... ok
+test args::tests::num_frames_greater_zero ... ok
+test args::tests::num_frames_provides_correct_addiitonal_frames ... ok
+test args::tests::test_byte_value_from_str_invalid_unit ... ok
+test args::tests::test_byte_value_from_str_valid_b ... ok
+test args::tests::test_byte_value_from_str_non_numeric_value ... ok
+test args::tests::test_byte_value_from_str_valid_gib ... ok
+test args::tests::test_byte_value_from_str_no_unit ... ok
+test args::tests::test_byte_value_from_str_valid_kib ... ok
+test args::tests::test_byte_value_from_str_valid_mib ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/integration/main.rs (target/debug/build/zeekstd_cli/c1eaa2c7d911c79e/out/integration-c1eaa2c7d911c79e)
+
+running 20 tests
+test do_not_create_out_file_if_input_file_does_not_exist ... ok
+test derive_out_name_when_compressing ... ok
+test derive_out_name_when_decompressing ... ok
+test fail_to_derive_out_name_when_decompressing_with_unknown_extension ... ok
+test fail_to_derive_out_name_when_decompressing_without_extension ... ok
+test do_not_overwrite_existing_seek_table_file ... ok
+test do_not_overwrite_existing_output_file ... ok
+test use_provided_output_path_during_decompression ... ok
+test decompress_frame_index_out_of_range ... ok
+test list_seekable ... ok
+test decompress_between_offset_and_offset_limit ... ok
+test decompress_frames_separate_seek_table ... ok
+test list_separate_seek_table ... ok
+test decompress_frames ... ok
+test force_overwrite_existing_file ... ok
+test cycle_stdin ... ok
+test cycle_with_separate_seek_table ... ok
+test cycle ... ok
+test cycle_stdout ... ok
+test cycle_stdin_to_stdout ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.86s
+
+   Doc-tests zeekstd
+
+running 41 tests
+test lib/src/../../README.md - ReadmeDoctests (line 84) - compile ... ok
+test lib/src/../../README.md - ReadmeDoctests (line 105) - compile ... ok
+test lib/src/decode.rs - decode::Decoder<'_,S> (line 536) - compile ... ok
+test lib/src/decode.rs - decode::Decoder<'_,S> (line 562) - compile ... ok
+test lib/src/decode.rs - decode::Decoder<'_,S> (line 549) - compile ... ok
+test lib/src/encode.rs - encode::Encoder (line 564) - compile ... ok
+test lib/src/encode.rs - encode::EncodeOptions<'a>::into_encoder (line 195) - compile ... ok
+test lib/src/encode.rs - encode::Encoder<'_,W>::compress (line 697) - compile ... ok
+test lib/src/encode.rs - encode::Encoder<'_,W>::finish (line 747) - compile ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::from_reader (line 449) - compile ... ok
+test lib/src/encode.rs - encode::EncodeOptions (line 103) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::from_seekable (line 326) - compile ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::from_seekable_format (line 367) - compile ... ok
+test lib/src/decode.rs - decode::Decoder<'_,S>::decompress (line 348) ... ok
+test lib/src/decode.rs - decode::Decoder<'_,S> (line 584) ... ok
+test lib/src/encode.rs - encode::RawEncoder<'_>::end_frame (line 427) ... ok
+test lib/src/encode.rs - encode::RawEncoder<'_>::reset_seek_table (line 524) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_index_comp (line 547) ... ok
+test lib/src/encode.rs - encode::RawEncoder<'_>::seek_table (line 486) ... ok
+test lib/src/encode.rs - encode::RawEncoder<'_>::compress (line 390) ... ok
+test lib/src/decode.rs - decode::Decoder<'_,S>::reset (line 389) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_end_comp (line 647) ... ok
+test lib/src/encode.rs - encode::RawEncoder (line 223) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_index_decomp (line 566) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_end_decomp (line 676) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_start_comp (line 589) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_start_decomp (line 618) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_size_decomp (line 735) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_size_comp (line 705) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::from_seekable (line 309) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::max_frame_size_comp (line 761) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::from_seekable_format (line 350) ... ok
+test lib/src/seek_table.rs - seek_table::Serializer (line 939) ... ok
+test lib/src/seek_table.rs - seek_table::Serializer::reset (line 1011) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::num_frames (line 529) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::max_frame_size_decomp (line 786) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::into_format_serializer (line 891) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::size_decomp (line 839) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::into_serializer (line 867) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::log_frame (line 501) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::size_comp (line 813) ... ok
+
+test result: ok. 41 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+all doctests ran in 0.21s; merged doctests compilation took 0.20s
+warning: Cargo.toml: `lints.clippy.cast-lossless` is deprecated in favor of `lints.clippy.cast_lossless` and will not work in a future edition
+warning: Cargo.toml: `lints.clippy.struct-excessive-bools` is deprecated in favor of `lints.clippy.struct_excessive_bools` and will not work in a future edition
+warning: workspace (manifest) generated 2 warnings
+warning: lib/Cargo.toml: `lints.clippy.cast-lossless` is deprecated in favor of `lints.clippy.cast_lossless` and will not work in a future edition
+warning: lib/Cargo.toml: `lints.clippy.struct-excessive-bools` is deprecated in favor of `lints.clippy.struct_excessive_bools` and will not work in a future edition
+warning: `zeekstd` (manifest) generated 2 warnings
+warning: cli/Cargo.toml: `lints.clippy.cast-lossless` is deprecated in favor of `lints.clippy.cast_lossless` and will not work in a future edition
+warning: cli/Cargo.toml: `lints.clippy.struct-excessive-bools` is deprecated in favor of `lints.clippy.struct_excessive_bools` and will not work in a future edition
+warning: `zeekstd_cli` (manifest) generated 2 warnings
+   Compiling zeekstd v0.6.2 (/home/at/code/rust/zeekstd/lib)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.23s
+     Running unittests src/lib.rs (target/debug/build/zeekstd/32aa250d48da23d0/out/zeekstd-32aa250d48da23d0)
+
+running 36 tests
+test decode::tests::decompress_and_reset ... ok
+test decode::tests::seek_table_that_disagrees_with_frame_is_rejected ... ok
+test decode::tests::set_frame_boundaries ... ok
+test decode::tests::checksum_verified_when_limit_is_at_an_inner_frame_end ... ok
+test decode::tests::reset_decompression ... ok
+test encode::tests::raw_encoder_forbids_uncompressed_frame_size_0 ... ok
+test decode::tests::set_offset_boundaries ... ok
+test decode::tests::source_that_ends_at_the_last_frame_is_accepted ... ok
+test encode::tests::raw_encoder_forbids_compressed_frame_size_0 ... ok
+test decode::tests::truncated_source_is_rejected ... ok
+test decode::tests::decompress_last_frames ... ok
+test decode::tests::decompress_until_upper_frame ... ok
+test decode::tests::options ... ok
+test decode::tests::small_reads_restore_everything ... ok
+test decode::tests::upper_frame_greater_than_lower_frame ... ok
+test encode::tests::checksum ... ok
+test encode::tests::raw_encoder_reset ... ok
+test decode::tests::decompress_everything_after_partly_decompression ... ok
+test decode::tests::checksum_verified_when_trailer_arrives_in_a_later_read ... ok
+test tests::cycle ... ok
+test decode::tests::checksum_verified_when_trailer_starts_at_input_buffer_boundary ... ok
+test decode::tests::decompress_within_offset_boundaries ... ok
+test tests::patch_cycle ... ok
+test seek_table::tests::frame_functions ... ok
+test tests::cycle_stand_alone_seek_table_foot ... ok
+test tests::cycle_stand_alone_seek_table_head ... ok
+test tests::patch_cycle_custom_compressed_frame_size ... ok
+test seek_table::tests::deserialize_compatible_with_zstd_seekable ... ok
+test tests::cycle_stand_alone_seek_table_foot_custom_compressed_frame_size ... ok
+test tests::cycle_custom_compressed_frame_size ... ok
+test seek_table::tests::serialize_compatible_with_zstd_seekable ... ok
+test seek_table::tests::serde_cycle ... ok
+test seek_table::tests::serialize ... ok
+test tests::cycle_stand_alone_seek_table_foot_custom_decompressed_frame_size ... ok
+test tests::cycle_custom_decompressed_frame_size ... ok
+test tests::patch_cycle_custom_decompressed_frame_size ... ok
+
+test result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.73s
+
+   Doc-tests zeekstd
+
+running 30 tests
+test lib/src/encode.rs - encode::RawEncoder<'_>::seek_table (line 486) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_end_decomp (line 676) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_end_comp (line 647) ... ok
+test lib/src/encode.rs - encode::RawEncoder<'_>::end_frame (line 427) ... ok
+test lib/src/encode.rs - encode::EncodeOptions (line 103) ... ok
+test lib/src/encode.rs - encode::RawEncoder<'_>::reset_seek_table (line 524) ... ok
+test lib/src/encode.rs - encode::RawEncoder (line 223) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_index_comp (line 547) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_size_comp (line 705) ... ok
+test lib/src/decode.rs - decode::Decoder<'_,S>::reset (line 389) ... ok
+test lib/src/decode.rs - decode::Decoder<'_,S>::decompress (line 348) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::from_seekable (line 326) - compile ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::from_seekable_format (line 367) - compile ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_index_decomp (line 566) ... ok
+test lib/src/encode.rs - encode::RawEncoder<'_>::compress (line 390) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_start_comp (line 589) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_size_decomp (line 735) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::from_seekable (line 309) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::from_seekable_format (line 350) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::frame_start_decomp (line 618) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::max_frame_size_comp (line 761) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::into_format_serializer (line 891) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::max_frame_size_decomp (line 786) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::num_frames (line 529) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::size_comp (line 813) ... ok
+test lib/src/seek_table.rs - seek_table::Serializer (line 939) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::log_frame (line 501) ... ok
+test lib/src/seek_table.rs - seek_table::Serializer::reset (line 1011) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::size_decomp (line 839) ... ok
+test lib/src/seek_table.rs - seek_table::SeekTable::into_serializer (line 867) ... ok
+
+test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+all doctests ran in 0.17s; merged doctests compilation took 0.17s
+
+exec
+/run/current-system/sw/bin/zsh -lc "git show --no-patch --format=full 977fc5c fdd6f54 7aaf00e; rg -n 'from_format|write_into' lib/src/seek_table.rs; nl -ba lib/src/decode.rs | sed -n '365,580p'; nl -ba cli/src/decompress.rs | sed -n '77,120p'; find /home/at/code -maxdepth 2 -type f \\( -name AGENTS.md -o -name AGENTS.override.md -o -name CLAUDE.md \\)" in /home/at/code/rust/zeekstd
+ succeeded in 0ms:
+commit 977fc5c03f228186829f3ac02331f9a1568aaa28
+Merge: 92c2102 fdd6f54
+Author: Ivan Kozik <ivan@ludios.org>
+Commit: Ivan Kozik <ivan@ludios.org>
+
+    lib: merge worktree-error-recovery; map UnexpectedEof to io::ErrorKind::UnexpectedEof
+    
+    Model-output: Claude Opus 5
+    
+    <prompt>
+    
+    thank you. can you please fix up and finish my merge after I did `git merge --ff worktree-error-recovery`, there's a conflict
+    
+    </prompt>
+    
+    <slop>
+    
+    **The merge is committed.** Only the changelog actually conflicted. The four source files merged textually, so I checked the combined decoder logic by hand rather than trusting it.
+    
+    **The conflict** was purely additive on both sides of `CHANGELOG_LIB.md`: each branch appended bullets under Fixed and under Added. I kept both sets.
+    
+    **What needed judgement** was `decode.rs`, which git merged without complaint. The other branch rewrote the decompress loop to verify frame trailers, while mine added an early return when a read fails after output was already produced. Combined, that early return breaks out of the new loop, and the next call re-evaluates the trailer condition, retries the read and surfaces the error. The pending-trailer state survives the break, so a truncated or corrupted frame is still caught on the retry rather than being skipped.
+    
+    **One deferred piece is now done.** The new `From<Error> for std::io::Error` maps the other branch's `UnexpectedEof` to `io::ErrorKind::UnexpectedEof`, keeping the zeekstd error as the source. That arm could only be written once both branches were on one tree, which is why both sessions left it to whoever merged. I added a test that reads a truncated source through the decoder's `Read` impl and checks the kind. Removing the arm makes it fail with `Other`, which I verified.
+    
+    47 library tests, 36 without `std`, and the CLI suite all pass. rustfmt is clean, and clippy reports only three warnings whose sites both predate this work.
+    
+    </slop>
+    
+    Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+
+commit fdd6f549c7cafdd541841f3a82d3b42ef9569b42
+Author: Ivan Kozik <ivan@ludios.org>
+Commit: Ivan Kozik <ivan@ludios.org>
+
+    lib: route Decoder's Read impl through From<Error> for io::Error
+    
+    Model-output: Claude Fable 5.1
+    
+    <prompt>
+    
+    in a worktree, could you please test if
+    
+    - **Error recovery corrupts** ([encode.rs:648-779](../lib/src/encode.rs#L648-L779)). A partial write followed by an error keeps the whole buffer, so retrying resends the prefix. The decoder advances its offset before surfacing a read error, so a retry loses bytes.
+    
+    is still an issue and (if it is), work on a fix?
+    
+    </prompt>
+    
+    <prompt>
+    
+    please continue
+    
+    </prompt>
+    
+    <slop>
+    
+    <review model="gpt-6-astra" reasoning_effort="xhigh">
+    
+    No actionable regressions were identified. Library tests passed with and without default features, CLI tests passed, and 1,408 additional fault-injection trials validated retries across compression, frame endings, and partial flushes.
+    
+    </review>
+    
+    **Confirmed and fixed.** Both halves of the finding reproduced against the unmodified code. The fix is on branch `worktree-error-recovery` in `.claude/worktrees/error-recovery`, as two commits: 7aaf00e with the fix and tests, and a small follow-up.
+    
+    **What reproduced**
+    - Encoder: a writer that accepted part of a flush and then failed made the encoder resend the accepted prefix on retry, so the total reported by `finish` disagreed with what the writer received. Input consumed before the failed flush was also lost from the caller's view, so retrying the same slice compressed it twice.
+    - Decoder: a read failure after output had already been placed in the caller's buffer returned an error with the offset already advanced, so the retry skipped those bytes.
+    - Both `Write` on `Encoder` and `Read` on `Decoder` turned every IO error into `ErrorKind::Other`, so a caller could not recognise `WouldBlock`.
+    
+    **What changed**
+    - [encode.rs](lib/src/encode.rs): the output buffer records how much of it the writer already accepted, and a flush resumes from there. Flushing now happens before compressing rather than after, so an error can never follow consumed input within one call. If input was already consumed, the call reports it and the error surfaces on the next call. `finish_format` flushes first and writes the seek table with plain `write_all`, which is fine because a consumed encoder cannot be retried.
+    - [decode.rs](lib/src/decode.rs): a failed read after output was produced returns the bytes produced so far. The read is retried, and its error reported, on the next call.
+    - [seekable.rs](lib/src/seekable.rs): the `Read + Seek` adapter retries `Interrupted` reads, since a `Seekable` caller cannot tell an interruption from a failure.
+    - [error.rs](lib/src/error.rs): new `From<zeekstd::Error> for std::io::Error` that hands back the original IO error. The `Write` and `Read` impls use it, so kinds are preserved. This is a small public API addition.
+    - Tests: four new tests fail every write call or read index in turn, twice in a row, and check that retrying still round-trips the data and that a persistent error reaches the caller. The `Interrupted` variants check that nothing leaks.
+    
+    **Codex review** (gpt-6-astra, xhigh) of 7aaf00e found no actionable regressions. It ran the test suites and 1,408 extra fault-injection trials of its own across compression, frame endings, and partial flushes. The follow-up commit only routes the decoder's `Read` impl through the new conversion, which another session working on the EOF finding asked for so that error-kind mapping stays in one place.
+    
+    **Worth knowing**
+    - A failure inside `finish` still cannot be recovered, since it consumes the encoder.
+    - `written_compressed()` can lag by one full buffer until the next call, because flushing moved before compression. The CLI reads it only after an explicit flush, so it is unaffected.
+    - Finding 8, the decoder EOF spin, is being handled by another session on branch `eof-spin`. Its hunks in `decompress_with_prefix` do not overlap mine.
+    - I added `// Model-output` header lines to the four touched source files per CLAUDE.md. Strip them if this goes upstream as a PR.
+    
+    Library tests pass with and without `std`, CLI tests pass, clippy shows only pre-existing warnings, and rustfmt is clean.
+    
+    </slop>
+    
+    Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+
+commit 7aaf00e22eb66957f581b126f0efe4cd4205aac6
+Author: Ivan Kozik <ivan@ludios.org>
+Commit: Ivan Kozik <ivan@ludios.org>
+
+    lib: make Encoder and Decoder safe to retry after IO errors; preserve io::ErrorKind; retry Interrupted reads
+    
+    Model-output: Claude Fable 5.1
+    
+    <prompt>
+    
+    in a worktree, could you please test if
+    
+    - **Error recovery corrupts** ([encode.rs:648-779](../lib/src/encode.rs#L648-L779)). A partial write followed by an error keeps the whole buffer, so retrying resends the prefix. The decoder advances its offset before surfacing a read error, so a retry loses bytes.
+    
+    is still an issue and (if it is), work on a fix?
+    
+    </prompt>
+    
+    <slop>
+    
+    **Confirmed and fixed.** Both halves of the finding reproduced against the unmodified code, and both are fixed on branch `worktree-error-recovery` in the worktree at `.claude/worktrees/error-recovery`.
+    
+    **What reproduced**
+    - Encoder: a writer that accepted part of a flush and then failed made the encoder resend the accepted prefix on retry. The total reported by `finish` then disagreed with the bytes the writer received. Input consumed before the failed flush was also lost from the caller's view, so retrying the same slice compressed it twice.
+    - Decoder: a read failure after output had already been placed in the caller's buffer returned an error with the offset already advanced, so the retry skipped those bytes.
+    - The `Write` impl on `Encoder` turned every IO error into `ErrorKind::Other`, so a caller could not recognise `WouldBlock`.
+    
+    **What changed**
+    - [encode.rs](lib/src/encode.rs): the output buffer now records how much of it the writer already accepted, and a flush resumes from there. Flushing happens before compressing rather than after, so an error can never follow consumed input within one call. If input was already consumed, the call reports it and the error surfaces on the next call. `finish_format` flushes first and then writes the seek table with plain `write_all`, which is fine because nothing can retry a consumed encoder.
+    - [decode.rs](lib/src/decode.rs): a failed read after output was produced returns the bytes produced so far. The read is retried, and its error reported, on the next call.
+    - [seekable.rs](lib/src/seekable.rs): the `Read + Seek` adapter retries `Interrupted` reads, since a `Seekable` caller cannot tell an interruption from a failure.
+    - [error.rs](lib/src/error.rs): new `From<zeekstd::Error> for std::io::Error` that hands back the original IO error. The `Write` impl uses it, so kinds are preserved. This is a small public API addition.
+    - Tests: four new tests fail every write call or read index in turn, twice in a row, and check that retrying still round-trips the data and that a persistent error does reach the caller. The `Interrupted` variants check that nothing leaks.
+    
+    **Not changed, worth knowing**
+    - A failure inside `finish` still cannot be recovered, since it consumes the encoder.
+    - `written_compressed()` can now lag by one full buffer until the next call, because flushing moved before compression. The CLI reads it only after an explicit flush, so it is unaffected.
+    - Finding 8 in the same review, the EOF spin in the decoder, is being handled by another session on branch `eof-spin`. Our hunks in `decompress_with_prefix` do not overlap.
+    - I added `// Model-output` header lines to the four touched source files per CLAUDE.md. Strip them if this goes upstream as a PR.
+    
+    Library tests pass with and without `std`, CLI tests pass, clippy shows only pre-existing warnings, and rustfmt is clean.
+    
+    </slop>
+    
+    Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+314:    /// # let n = ser.write_into(&mut buf);
+355:    /// # let n = ser.write_into(&mut buf);
+877:    /// let n = serializer.write_into(&mut buf);
+901:    /// let n = serializer.write_into(&mut buf);
+949:/// let n = ser.write_into(&mut buf);
+965:    pub fn write_into(&mut self, buf: &mut [u8]) -> usize {
+1021:    /// let n = ser.write_into(&mut first);
+1026:    /// let n = ser.write_into(&mut second);
+1055:        Ok(self.write_into(buf))
+1122:        let n = ser.write_into(&mut buf);
+1126:        let n = ser.write_into(&mut buf);
+1134:            let n = ser.write_into(&mut buf);
+1146:        let n = ser.write_into(&mut buf);
+1158:        let n = ser.write_into(&mut buf);
+   365	    /// // Decompress in a loop until no more bytes are written to `buf`
+   366	    /// loop {
+   367	    ///     let n = decoder.decompress(&mut buf[progress..])?;
+   368	    ///     if n == 0 {
+   369	    ///         break;
+   370	    ///     }
+   371	    ///     progress += n;
+   372	    /// }
+   373	    ///
+   374	    /// # assert_eq!(b"Hello, World!", &buf[..progress]);
+   375	    /// # Ok::<(), zeekstd::Error>(())
+   376	    /// ```
+   377	    pub fn decompress(&mut self, buf: &mut [u8]) -> Result<usize> {
+   378	        self.decompress_with_prefix(buf, None)
+   379	    }
+   380	
+   381	    /// Resets the current decompresion status.
+   382	    ///
+   383	    /// This resets the internal decompression context as well as decompression offset and limit.
+   384	    /// The next decompression operation after this function will start from the beginning of the
+   385	    /// seekable source.
+   386	    ///
+   387	    /// # Examples
+   388	    ///
+   389	    /// ```
+   390	    /// # use zeekstd::{BytesWrapper, RawEncoder};
+   391	    /// # let mut encoder = RawEncoder::new()?;
+   392	    /// # let mut seekable = [0u8; 128];
+   393	    /// # let prog = encoder.compress(b"Hello, World!", &mut seekable)?;
+   394	    /// # let end_prog = encoder.end_frame(&mut seekable[prog.out_progress()..])?;
+   395	    /// # let mut ser = encoder.into_seek_table().into_serializer();
+   396	    /// # let mut n = prog.out_progress() + end_prog.out_progress();
+   397	    /// # n += ser.write_into(&mut seekable[n..]);
+   398	    /// # let seekable = BytesWrapper::new(&seekable[..n]);
+   399	    /// use zeekstd::Decoder;
+   400	    ///
+   401	    /// let mut decoder = Decoder::new(seekable)?;
+   402	    /// decoder.reset();
+   403	    ///
+   404	    /// assert_eq!(decoder.read_compressed(), 0);
+   405	    /// assert_eq!(decoder.offset(), 0);
+   406	    /// assert_eq!(decoder.offset_limit(), decoder.seek_table().size_decomp());
+   407	    /// # Ok::<(), zeekstd::Error>(())
+   408	    /// ```
+   409	    pub fn reset(&mut self) {
+   410	        self.reset_dctx();
+   411	        self.offset = 0;
+   412	        self.offset_limit = self.seek_table().size_decomp();
+   413	    }
+   414	
+   415	    fn reset_dctx(&mut self) {
+   416	        self.read_compressed = 0;
+   417	        self.frame_done = true;
+   418	        self.dctx
+   419	            .reset(ResetDirective::SessionOnly)
+   420	            .expect("Resetting session never fails");
+   421	    }
+   422	
+   423	    /// Sets the decompression offset to the beginning of the frame at `index`.
+   424	    ///
+   425	    /// This has the same effect as calling [`Self::set_offset`] with the decompressed start
+   426	    /// position of the frame at `index`.
+   427	    ///
+   428	    /// # Errors
+   429	    ///
+   430	    /// When the the passed frame index is out of range.
+   431	    pub fn set_lower_frame(&mut self, index: u32) -> Result<u64> {
+   432	        let offset = self.seek_table.frame_start_decomp(index)?;
+   433	        self.set_offset(offset)?;
+   434	
+   435	        Ok(offset)
+   436	    }
+   437	
+   438	    /// Sets the limit for the decompression offset to the end of the frame at `index`.
+   439	    ///
+   440	    /// This has the same effect as calling [`Self::set_offset_limit`] with the decompressed end
+   441	    /// position of the frame at `index`. The current decompression state will not be reset, it is
+   442	    /// possible to change the upper frame in the middle of a decompression operation.
+   443	    ///
+   444	    /// # Errors
+   445	    ///
+   446	    /// When the the passed frame index is out of range.
+   447	    pub fn set_upper_frame(&mut self, index: u32) -> Result<u64> {
+   448	        let offset = self.seek_table.frame_end_decomp(index)?;
+   449	        self.set_offset_limit(offset)?;
+   450	
+   451	        Ok(offset)
+   452	    }
+   453	
+   454	    /// Sets the decompression offset.
+   455	    ///
+   456	    /// The offset is the position in the _decompressed_ data of the seekable source from which
+   457	    /// decompression starts. If possible, the decoder will continue decompression from the current
+   458	    /// internal state.
+   459	    ///
+   460	    /// **Note**: If the passed offset is not the beginning of a frame, the decoder will perform a
+   461	    /// dummy decompression from the beginning of the frame up to the offset position.
+   462	    ///
+   463	    /// # Errors
+   464	    ///
+   465	    /// When the passed offset is out of range.
+   466	    pub fn set_offset(&mut self, offset: u64) -> Result<()> {
+   467	        Self::check_offset(offset, self.seek_table())?;
+   468	        let current_frame = self.seek_table().frame_index_decomp(self.offset);
+   469	        let target_frame = self.seek_table().frame_index_decomp(offset);
+   470	
+   471	        // Only reset if we cannot continue from previous decompression
+   472	        if current_frame != target_frame || offset < self.offset {
+   473	            self.reset_dctx();
+   474	        }
+   475	        self.offset = offset;
+   476	
+   477	        Ok(())
+   478	    }
+   479	
+   480	    /// Sets a limit for the decompression offset.
+   481	    ///
+   482	    /// The limit is the position in the _decompressed_ data of the seekable source at which
+   483	    /// decompression stops. This does not reset the current decompression state, the limit can be
+   484	    /// changed in the middle of a decompression operation without interrupting the ongoing
+   485	    /// operation. It is possible to set a limit that is lower than the current decompression
+   486	    /// offset, however, it will lead to any decompression operation making no progress, i.e.
+   487	    /// it will produce zero decompressed bytes.
+   488	    ///
+   489	    /// **Note**: The decoder will immediately stop decompression at the specified limit. The
+   490	    /// frame checksum of the last decompressed frame will not be verified, if the limit isn't at
+   491	    /// the end of a frame.
+   492	    ///
+   493	    /// # Errors
+   494	    ///
+   495	    /// When the passed limit is out of range.
+   496	    pub fn set_offset_limit(&mut self, limit: u64) -> Result<()> {
+   497	        Self::check_offset(limit, self.seek_table())?;
+   498	        self.offset_limit = limit;
+   499	
+   500	        Ok(())
+   501	    }
+   502	
+   503	    fn check_offset(offset: u64, seek_table: &SeekTable) -> Result<()> {
+   504	        if offset > seek_table.size_decomp() {
+   505	            Err(Error::offset_out_of_range())
+   506	        } else {
+   507	            Ok(())
+   508	        }
+   509	    }
+   510	
+   511	    /// Gets the total number of compressed bytes read since the last reset.
+   512	    pub fn read_compressed(&self) -> u64 {
+   513	        self.read_compressed
+   514	    }
+   515	
+   516	    /// Gets a reference to the internal [`SeekTable`].
+   517	    pub fn seek_table(&self) -> &SeekTable {
+   518	        &self.seek_table
+   519	    }
+   520	
+   521	    /// Gets the current offset of this decoder.
+   522	    pub fn offset(&self) -> u64 {
+   523	        self.offset
+   524	    }
+   525	
+   526	    /// Gets the offset limit of this decoder.
+   527	    pub fn offset_limit(&self) -> u64 {
+   528	        self.offset_limit
+   529	    }
+   530	}
+   531	
+   532	/// Allows to read decompressed data from a `Decoder`.
+   533	///
+   534	/// # Examples
+   535	///
+   536	/// ```no_run
+   537	/// use std::{fs::File, io};
+   538	/// use zeekstd::Decoder;
+   539	///
+   540	/// let seekable = File::open("seekable.zst")?;
+   541	/// let mut output = File::create("output")?;
+   542	/// let mut decoder = Decoder::new(seekable)?;
+   543	/// io::copy(&mut decoder, &mut output)?;
+   544	/// # Ok::<(), zeekstd::Error>(())
+   545	/// ```
+   546	///
+   547	/// Similar to regular decompression, this supports frame limits.
+   548	///
+   549	/// ```no_run
+   550	/// # use std::{fs::File, io};
+   551	/// # use zeekstd::Decoder;
+   552	/// # let seekable = File::open("seekable.zst")?;
+   553	/// # let mut decoder = Decoder::new(seekable)?;
+   554	/// decoder.set_lower_frame(2)?;
+   555	/// decoder.set_upper_frame(3)?;
+   556	/// io::copy(&mut decoder, &mut io::stdout())?;
+   557	/// # Ok::<(), zeekstd::Error>(())
+   558	/// ```
+   559	///
+   560	/// And also arbitrary byte offsets.
+   561	///
+   562	/// ```no_run
+   563	/// # use std::{fs::File, io};
+   564	/// # use zeekstd::Decoder;
+   565	/// # let seekable = File::open("seekable.zst")?;
+   566	/// # let mut decoder = Decoder::new(seekable)?;
+   567	/// decoder.set_offset(123)?;
+   568	/// decoder.set_offset_limit(456)?;
+   569	/// io::copy(&mut decoder, &mut io::stdout())?;
+   570	/// # Ok::<(), zeekstd::Error>(())
+   571	/// ```
+   572	#[cfg(feature = "std")]
+   573	#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+   574	impl<S: Seekable> std::io::Read for Decoder<'_, S> {
+   575	    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+   576	        Ok(self.decompress(buf)?)
+   577	    }
+   578	}
+   579	
+   580	/// Allows to set the offset of a `Decoder` via seeking.
+    77	    pub fn decompress_into<'b: 'a, W: Write>(
+    78	        mut self,
+    79	        writer: &mut W,
+    80	        prefix: Option<&'b [u8]>,
+    81	    ) -> Result<u64> {
+    82	        let mut buf = vec![0; DCtx::out_size()];
+    83	        let mut buf_pos = 0;
+    84	        let mut written = 0;
+    85	
+    86	        loop {
+    87	            let n = self
+    88	                .decoder
+    89	                .decompress_with_prefix(&mut buf[buf_pos..], prefix)
+    90	                .context("Failed to decompress data")?;
+    91	            if n == 0 {
+    92	                break;
+    93	            }
+    94	            if let Some(bar) = &self.bar {
+    95	                bar.inc(n as u64);
+    96	            }
+    97	            buf_pos += n;
+    98	            if buf_pos == buf.len() {
+    99	                writer
+   100	                    .write_all(&buf)
+   101	                    .context("Failed to write decompressed data")?;
+   102	                written += buf_pos as u64;
+   103	                buf_pos = 0;
+   104	            }
+   105	        }
+   106	
+   107	        writer
+   108	            .write_all(&buf[..buf_pos])
+   109	            .context("Failed to write decompressed data")?;
+   110	        written += buf_pos as u64;
+   111	
+   112	        if let Some(bar) = &self.bar {
+   113	            bar.finish_and_clear();
+   114	        }
+   115	
+   116	        Ok(written)
+   117	    }
+   118	}
+
+exec
+/run/current-system/sw/bin/zsh -lc "nl -ba lib/src/decode.rs | sed -n '650,885p'; nl -ba lib/src/encode.rs | sed -n '80,220p'; sed -n '950,1010p' lib/src/seek_table.rs; git diff --check 92c210284eccbbd4f1f6b45f8c93d446ffec7ddc; ls /home/at/.cargo/config*" in /home/at/code/rust/zeekstd
+ exited 1 in 0ms:
+   650	        BytesWrapper, EncodeOptions, FrameSizePolicy, SEEK_TABLE_INTEGRITY_SIZE,
+   651	        seek_table::Format, tests::INPUT,
+   652	    };
+   653	
+   654	    use super::*;
+   655	
+   656	    /// Pseudo-random bytes that zstd stores in raw blocks, so flipping one of them can only be
+   657	    /// noticed by the frame checksum.
+   658	    fn noise(len: usize) -> Vec<u8> {
+   659	        let mut x: u64 = 0x9E37_79B9_7F4A_7C15;
+   660	        (0..len)
+   661	            .map(|_| {
+   662	                x ^= x << 13;
+   663	                x ^= x >> 7;
+   664	                x ^= x << 17;
+   665	                (x >> 56) as u8
+   666	            })
+   667	            .collect()
+   668	    }
+   669	
+   670	    /// Compresses `input` into a complete seekable (frames followed by a `Foot` seek table),
+   671	    /// checking that the encoder's progress reports add up to what it wrote.
+   672	    fn encode(input: &[u8], frame_size_policy: Option<FrameSizePolicy>, checksum: bool) -> Vec<u8> {
+   673	        let mut seekable = vec![];
+   674	        let mut encoder = EncodeOptions::new()
+   675	            .frame_size_policy(frame_size_policy.unwrap_or_default())
+   676	            .checksum_flag(checksum)
+   677	            .into_raw_encoder()
+   678	            .unwrap();
+   679	
+   680	        let mut buf = vec![0; input.len().max(64)];
+   681	
+   682	        let mut in_progress = 0;
+   683	        let mut out_progress = 0;
+   684	        while in_progress < input.len() {
+   685	            let progress = encoder.compress(&input[in_progress..], &mut buf).unwrap();
+   686	            seekable.extend(&buf[..progress.out_progress()]);
+   687	            in_progress += progress.in_progress();
+   688	            out_progress += progress.out_progress();
+   689	        }
+   690	        assert_eq!(in_progress, input.len());
+   691	
+   692	        loop {
+   693	            let prog = encoder.end_frame(&mut buf).unwrap();
+   694	            seekable.extend(&buf[..prog.out_progress()]);
+   695	            out_progress += prog.out_progress();
+   696	            if prog.data_left() == 0 {
+   697	                break;
+   698	            }
+   699	        }
+   700	        assert_eq!(out_progress, seekable.len());
+   701	
+   702	        let mut ser = encoder.into_seek_table().into_serializer();
+   703	        loop {
+   704	            let n = ser.write_into(&mut buf);
+   705	            if n == 0 {
+   706	                break;
+   707	            }
+   708	            seekable.extend(&buf[..n]);
+   709	        }
+   710	        assert_eq!(out_progress + ser.encoded_len(), seekable.len());
+   711	
+   712	        seekable
+   713	    }
+   714	
+   715	    fn new_seekable(frame_size_policy: Option<FrameSizePolicy>) -> Vec<u8> {
+   716	        encode(INPUT.as_bytes(), frame_size_policy, false)
+   717	    }
+   718	
+   719	    /// Serves at most `chunk` bytes per read, so that a frame trailer lands in a later read
+   720	    /// than the data it protects.
+   721	    struct ChunkedBytes<'a> {
+   722	        inner: BytesWrapper<'a>,
+   723	        chunk: usize,
+   724	    }
+   725	
+   726	    impl Seekable for ChunkedBytes<'_> {
+   727	        fn set_offset(&mut self, offset: OffsetFrom) -> Result<u64> {
+   728	            self.inner.set_offset(offset)
+   729	        }
+   730	
+   731	        fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+   732	            let len = buf.len().min(self.chunk);
+   733	            self.inner.read(&mut buf[..len])
+   734	        }
+   735	
+   736	        fn seek_table_integrity(
+   737	            &mut self,
+   738	            format: Format,
+   739	        ) -> Result<[u8; SEEK_TABLE_INTEGRITY_SIZE]> {
+   740	            self.inner.seek_table_integrity(format)
+   741	        }
+   742	    }
+   743	
+   744	    /// A decoder over `seekable` whose data reads return at most `chunk` bytes. The seek table
+   745	    /// is parsed from the plain bytes, as the table parser does not cope with short reads yet.
+   746	    fn chunked_decoder(seekable: &[u8], chunk: usize) -> Decoder<'static, ChunkedBytes<'_>> {
+   747	        let st = SeekTable::from_seekable(&mut BytesWrapper::new(seekable)).unwrap();
+   748	        let src = ChunkedBytes {
+   749	            inner: BytesWrapper::new(seekable),
+   750	            chunk,
+   751	        };
+   752	        DecodeOptions::new(src)
+   753	            .seek_table(st)
+   754	            .into_decoder()
+   755	            .unwrap()
+   756	    }
+   757	
+   758	    /// Decompresses everything the decoder is set up to produce, asking for at most `chunk`
+   759	    /// bytes per call.
+   760	    fn decode_all<S: Seekable>(decoder: &mut Decoder<'_, S>, chunk: usize) -> Result<Vec<u8>> {
+   761	        let mut output = vec![];
+   762	        let mut buf = vec![0; chunk];
+   763	        loop {
+   764	            let n = decoder.decompress(&mut buf)?;
+   765	            if n == 0 {
+   766	                return Ok(output);
+   767	            }
+   768	            output.extend_from_slice(&buf[..n]);
+   769	        }
+   770	    }
+   771	
+   772	    fn assert_checksum_error(result: Result<Vec<u8>>, context: &str) {
+   773	        match result {
+   774	            Ok(output) => panic!(
+   775	                "corruption went unnoticed ({context}): got {} bytes",
+   776	                output.len()
+   777	            ),
+   778	            Err(err) => assert!(
+   779	                err.is_zstd() && err.to_string().contains("checksum"),
+   780	                "expected a checksum error ({context}), got: {err}"
+   781	            ),
+   782	        }
+   783	    }
+   784	
+   785	    #[test]
+   786	    fn small_reads_restore_everything() {
+   787	        let input = noise(2500);
+   788	        let seekable = encode(&input, Some(FrameSizePolicy::Uncompressed(1000)), true);
+   789	        let st = SeekTable::from_seekable(&mut BytesWrapper::new(&seekable)).unwrap();
+   790	        assert_eq!(st.num_frames(), 3);
+   791	
+   792	        for chunk in [1, 3, 1000] {
+   793	            let mut decoder = chunked_decoder(&seekable, chunk);
+   794	            assert_eq!(decode_all(&mut decoder, 4096).unwrap(), input);
+   795	            // Every frame, including its trailer, has been consumed
+   796	            assert_eq!(decoder.read_compressed(), st.size_comp());
+   797	        }
+   798	    }
+   799	
+   800	    #[test]
+   801	    fn checksum_verified_when_trailer_arrives_in_a_later_read() {
+   802	        let input = noise(3000);
+   803	        let mut seekable = encode(&input, Some(FrameSizePolicy::Uncompressed(1000)), true);
+   804	        let st = SeekTable::from_seekable(&mut BytesWrapper::new(&seekable)).unwrap();
+   805	        // Flip a payload byte of the last frame
+   806	        let last = st.num_frames() - 1;
+   807	        let payload = st.frame_start_comp(last).unwrap() as usize + 20;
+   808	        seekable[payload] ^= 0xFF;
+   809	
+   810	        for chunk in [1, 3] {
+   811	            let mut decoder = chunked_decoder(&seekable, chunk);
+   812	            assert_checksum_error(
+   813	                decode_all(&mut decoder, 4096),
+   814	                &alloc::format!("{chunk}-byte reads"),
+   815	            );
+   816	        }
+   817	    }
+   818	
+   819	    #[test]
+   820	    fn checksum_verified_when_limit_is_at_an_inner_frame_end() {
+   821	        let input = noise(3000);
+   822	        let mut seekable = encode(&input, Some(FrameSizePolicy::Uncompressed(1000)), true);
+   823	        let st = SeekTable::from_seekable(&mut BytesWrapper::new(&seekable)).unwrap();
+   824	        // Flip a payload byte of the middle frame
+   825	        let payload = st.frame_start_comp(1).unwrap() as usize + 20;
+   826	        seekable[payload] ^= 0xFF;
+   827	
+   828	        let mut decoder = chunked_decoder(&seekable, 1);
+   829	        decoder.set_upper_frame(1).unwrap();
+   830	        assert_checksum_error(decode_all(&mut decoder, 4096), "upper frame 1");
+   831	    }
+   832	
+   833	    #[test]
+   834	    fn checksum_verified_when_trailer_starts_at_input_buffer_boundary() {
+   835	        // Frame header (6 bytes) and raw block header (3 bytes) plus the payload fill the
+   836	        // decoder's input buffer exactly, leaving the checksum for the next read.
+   837	        let input = noise(DCtx::in_size() - 9);
+   838	        let mut seekable = encode(&input, None, true);
+   839	        let st = SeekTable::from_seekable(&mut BytesWrapper::new(&seekable)).unwrap();
+   840	        assert_eq!(st.num_frames(), 1);
+   841	        assert_eq!(
+   842	            st.frame_size_comp(0).unwrap(),
+   843	            DCtx::in_size() as u64 + 4,
+   844	            "test setup: the checksum must start at the input buffer boundary"
+   845	        );
+   846	        seekable[100] ^= 0xFF;
+   847	
+   848	        let mut decoder = Decoder::new(BytesWrapper::new(&seekable)).unwrap();
+   849	        // A buffer large enough to take the whole frame content in one call, like the CLI uses
+   850	        assert_checksum_error(
+   851	            decode_all(&mut decoder, input.len() + 1),
+   852	            "input buffer boundary",
+   853	        );
+   854	    }
+   855	
+   856	    #[test]
+   857	    fn truncated_source_is_rejected() {
+   858	        let input = noise(2500);
+   859	        let seekable = encode(&input, Some(FrameSizePolicy::Uncompressed(1000)), true);
+   860	        let st = SeekTable::from_seekable(&mut BytesWrapper::new(&seekable)).unwrap();
+   861	        let data_len = st.size_comp() as usize;
+   862	
+   863	        // Cut off the last checksum only, then part of the last frame's content
+   864	        for cut in [4, 100] {
+   865	            let src = BytesWrapper::new(&seekable[..data_len - cut]);
+   866	            let mut decoder = DecodeOptions::new(src)
+   867	                .seek_table(st.clone())
+   868	                .into_decoder()
+   869	                .unwrap();
+   870	            let result = decode_all(&mut decoder, 4096);
+   871	            assert!(
+   872	                result.as_ref().is_err_and(Error::is_unexpected_eof),
+   873	                "source cut by {cut} bytes: {:?}",
+   874	                result.as_ref().map(Vec::len)
+   875	            );
+   876	        }
+   877	    }
+   878	
+   879	    #[test]
+   880	    #[cfg(feature = "std")]
+   881	    fn truncated_source_reads_as_unexpected_eof() {
+   882	        let input = noise(2500);
+   883	        let seekable = encode(&input, Some(FrameSizePolicy::Uncompressed(1000)), true);
+   884	        let st = SeekTable::from_seekable(&mut BytesWrapper::new(&seekable)).unwrap();
+   885	        let data_len = st.size_comp() as usize;
+    80	            out_progress,
+    81	            data_left,
+    82	        }
+    83	    }
+    84	
+    85	    /// The output progress, i.e. the number of bytes that were written to the output buffer.
+    86	    pub fn out_progress(&self) -> usize {
+    87	        self.out_progress
+    88	    }
+    89	
+    90	    /// A minimal estimation of the bytes left to flush. The epilogue is entirely written if this
+    91	    /// value is zero.
+    92	    pub fn data_left(&self) -> usize {
+    93	        self.data_left
+    94	    }
+    95	}
+    96	
+    97	/// Options that configure how data is compressed.
+    98	///
+    99	/// # Examples
+   100	///
+   101	/// Supports builder like chaining.
+   102	///
+   103	/// ```
+   104	/// use zeekstd::{EncodeOptions, FrameSizePolicy};
+   105	///
+   106	/// let encoder = EncodeOptions::new()
+   107	///     .checksum_flag(false)
+   108	///     .compression_level(5)
+   109	///     .frame_size_policy(FrameSizePolicy::Uncompressed(8192))
+   110	///     .into_raw_encoder()?;
+   111	/// # Ok::<(), zeekstd::Error>(())
+   112	/// ```
+   113	pub struct EncodeOptions<'a> {
+   114	    cctx: CCtx<'a>,
+   115	    frame_policy: FrameSizePolicy,
+   116	    checksum_flag: bool,
+   117	    compression_level: CompressionLevel,
+   118	}
+   119	
+   120	impl Default for EncodeOptions<'_> {
+   121	    fn default() -> Self {
+   122	        Self::new()
+   123	    }
+   124	}
+   125	
+   126	impl<'a> EncodeOptions<'a> {
+   127	    /// Creates a set of options with default values.
+   128	    ///
+   129	    /// # Panics
+   130	    ///
+   131	    /// If allocation of [`CCtx`] fails.
+   132	    pub fn new() -> Self {
+   133	        Self::with_cctx(CCtx::create())
+   134	    }
+   135	
+   136	    /// Tries to create new options with default values.
+   137	    ///
+   138	    /// Returns `None` if allocation of [`CCtx`] fails.
+   139	    pub fn try_new() -> Option<Self> {
+   140	        let cctx = CCtx::try_create()?;
+   141	        Some(Self::with_cctx(cctx))
+   142	    }
+   143	
+   144	    /// Create options with the given compression context.
+   145	    pub fn with_cctx(cctx: CCtx<'a>) -> Self {
+   146	        Self {
+   147	            cctx,
+   148	            frame_policy: FrameSizePolicy::default(),
+   149	            checksum_flag: false,
+   150	            compression_level: CompressionLevel::default(),
+   151	        }
+   152	    }
+   153	
+   154	    /// Sets a [`CCtx`].
+   155	    pub fn cctx(mut self, cctx: CCtx<'a>) -> Self {
+   156	        self.cctx = cctx;
+   157	        self
+   158	    }
+   159	
+   160	    /// Sets a [`FrameSizePolicy`].
+   161	    pub fn frame_size_policy(mut self, policy: FrameSizePolicy) -> Self {
+   162	        self.frame_policy = policy;
+   163	        self
+   164	    }
+   165	
+   166	    /// Whether to write 32 bit checksums at the end of frames.
+   167	    pub fn checksum_flag(mut self, flag: bool) -> Self {
+   168	        self.checksum_flag = flag;
+   169	        self
+   170	    }
+   171	
+   172	    /// Sets the compression level used by zstd.
+   173	    pub fn compression_level(mut self, level: CompressionLevel) -> Self {
+   174	        self.compression_level = level;
+   175	        self
+   176	    }
+   177	
+   178	    /// Creates a [`RawEncoder`] with the configuration.
+   179	    ///
+   180	    /// # Errors
+   181	    ///
+   182	    /// Fails if the raw encoder cannot be created.
+   183	    pub fn into_raw_encoder(self) -> Result<RawEncoder<'a>> {
+   184	        RawEncoder::with_opts(self)
+   185	    }
+   186	
+   187	    /// Creates an [`Encoder`] with the configuration.
+   188	    ///
+   189	    /// # Errors
+   190	    ///
+   191	    /// Fails if the encoder cannot be created.
+   192	    ///
+   193	    /// # Examples
+   194	    ///
+   195	    /// ```no_run
+   196	    /// use std::fs::File;
+   197	    /// use zeekstd::EncodeOptions;
+   198	    ///
+   199	    /// let output = File::create("data.zst").unwrap();
+   200	    /// let encoder = EncodeOptions::new()
+   201	    ///     .checksum_flag(true)
+   202	    ///     .into_encoder(output)
+   203	    ///     .unwrap();
+   204	    /// ```
+   205	    #[cfg(feature = "std")]
+   206	    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+   207	    pub fn into_encoder<W>(self, writer: W) -> Result<Encoder<'a, W>> {
+   208	        Encoder::with_opts(writer, self)
+   209	    }
+   210	}
+   211	
+   212	/// A reusable, seekable encoder.
+   213	///
+   214	/// Performs low level in-memory seekable compression for streams of data. The `RawEncoder` starts
+   215	/// new frames automatically at 2MiB of uncompressed data by default. See [`EncodeOptions`] to
+   216	/// change this and other compression parameters.
+   217	///
+   218	/// # Examples
+   219	///
+   220	/// Creates seekable compressed files using a `RawEncoder`. See the [`Encoder`], for a more
+/// assert_eq!(n, ser.encoded_len());
+/// # Ok::<(), zeekstd::Error>(())
+/// ```
+pub struct Serializer {
+    frames: Vec<Frame>,
+    frame_index: usize,
+    write_pos: usize,
+    format: Format,
+}
+
+impl Serializer {
+    /// Write the seek table into `buf`.
+    ///
+    /// Returns the number of bytes written. Call this repetitively until `0` is returned to
+    /// serialize the entire seek table.
+    pub fn write_into(&mut self, buf: &mut [u8]) -> usize {
+        let mut buf_pos = 0;
+
+        // Write skippable header
+        write_le32!(buf, buf_pos, self.write_pos, SKIPPABLE_MAGIC_NUMBER, 0);
+        write_le32!(buf, buf_pos, self.write_pos, self.frame_size(), 4);
+
+        // Write the integrity field before the frame data in Head format
+        if matches!(self.format, Format::Head) {
+            write_integrity!(
+                buf,
+                buf_pos,
+                self,
+                self.frames.len() as u32,
+                SKIPPABLE_HEADER_SIZE
+            );
+        }
+
+        // Write frames
+        while self.frame_index < self.frames.len() {
+            let offset = SKIPPABLE_HEADER_SIZE + SIZE_PER_FRAME * self.frame_index;
+            match self.format {
+                Format::Head => {
+                    write_frame!(buf, buf_pos, self, offset + SEEK_TABLE_INTEGRITY_SIZE);
+                }
+                Format::Foot => {
+                    write_frame!(buf, buf_pos, self, offset);
+                }
+            }
+        }
+
+        // Write the integrity field after the frame data in Foot format
+        if matches!(self.format, Format::Foot) {
+            let offset = SKIPPABLE_HEADER_SIZE + SIZE_PER_FRAME * self.frames.len();
+            write_integrity!(buf, buf_pos, self, self.frames.len() as u32, offset);
+        }
+
+        buf_pos
+    }
+
+    /// Reset the serialization progress.
+    ///
+    /// Serialization starts from the beginning after this. Can be called at any time.
+    ///
+    /// # Examples
+    ///
+zsh:1: no matches found: /home/at/.cargo/config*
+
+exec
+/run/current-system/sw/bin/zsh -lc "find target/debug -name 'libzeekstd*.rlib' -o -name 'libzstd_safe*.rlib'; git status --short" in /home/at/code/rust/zeekstd
+ succeeded in 0ms:
+target/debug/build/zstd-safe/a11cb377963e8db9/out/libzstd_safe-a11cb377963e8db9.rlib
+target/debug/build/zstd-safe/087a328bfa96eb07/out/libzstd_safe-087a328bfa96eb07.rlib
+target/debug/build/zeekstd/f7330298666fda69/out/libzeekstd-f7330298666fda69.rlib
+target/debug/build/zeekstd/9f9a067407ea69e5/out/libzeekstd-9f9a067407ea69e5.rlib
+target/debug/build/zeekstd/a4b9ae87ed377971/out/libzeekstd-a4b9ae87ed377971.rlib
+target/debug/libzeekstd.rlib
+?? .claude/
+?? .syncthing..CHANGELOG_LIB.md.swp.tmp
+?? AGENTS.md
+?? CLAUDE.md
+?? Cargo.lock.zst
+?? ai-code-reviews/
+
+exec
+/run/current-system/sw/bin/zsh -lc 'review_dir=$(mktemp -d /tmp/zeekstd-review.XXXXXX); printf '"'%s\\n' \""'$review_dir"; mkdir "$review_dir/src"; cat > "$review_dir/Cargo.toml" <<'"'EOF'
+[package]
+name = \"zeekstd-review\"
+version = \"0.0.0\"
+edition = \"2024\"
+[dependencies]
+zeekstd = { path = \"/home/at/code/rust/zeekstd/lib\" }
+EOF
+cat > \""'$review_dir/src/main.rs" <<'"'EOF'
+// Model-output: OpenAI Codex
+use std::io::{self, Cursor, Read, Seek, SeekFrom, Write};
+use zeekstd::{BytesWrapper, DecodeOptions, EncodeOptions, FrameSizePolicy, SeekTable};
+
+struct Source<'a> {
+    bytes: Cursor<&'a [u8]>,
+    chunk: usize,
+    calls: usize,
+    fail: std::ops::Range<usize>,
+}
+impl Read for Source<'_> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let call = self.calls;
+        self.calls += 1;
+        if self.fail.contains(&call) {
+            return Err(io::ErrorKind::WouldBlock.into());
+        }
+        let n = buf.len().min(self.chunk);
+        self.bytes.read(&mut buf[..n])
+    }
+}
+impl Seek for Source<'_> {
+    fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> { self.bytes.seek(pos) }
+}
+
+/// Generates deterministic incompressible input of "'`len` bytes.
+fn noise(len: usize) -> Vec<u8> {
+    let mut x = 0x9E37_79B9_7F4A_7C15u64;
+    (0..len).map(|_| {
+        x ''^= x << 13;
+        x ''^= x >> 7;
+        x ''^= x << 17;
+        (x >> 56) as u8
+    }).collect()
+}
+
+/// Encodes `input` into checksummed frames of at most `frame_size` bytes.
+fn encode(input: &[u8], frame_size: u32) -> Vec<u8> {
+    let mut bytes = Vec::new();
+    let mut encoder = EncodeOptions::new().checksum_flag(true)
+        .frame_size_policy(FrameSizePolicy::Uncompressed(frame_size))
+        .into_encoder(&mut bytes).unwrap();
+    encoder.write_all(input).unwrap();
+    encoder.finish().unwrap();
+    bytes
+}
+
+/// Reads `range` through failures at `fail`, returning data, source call count and final error.
+fn decode(bytes: &[u8], st: &SeekTable, range: std::ops::Range<u64>, chunk: usize,
+          output_chunk: usize, fail: std::ops::Range<usize>)
+          -> (Vec<u8>, usize, Option<zeekstd::Error>) {
+    let mut src = Source { bytes: Cursor::new(bytes), chunk, calls: 0, fail };
+    let mut decoder = DecodeOptions::new(&mut src).seek_table(st.clone())
+        .offset(range.start).offset_limit(range.end).into_decoder().unwrap();
+    let mut out = vec![];
+    let mut buf = vec![0; output_chunk];
+    let mut final_err = None;
+    for _ in 0..100_000 {
+        match decoder.decompress(&mut buf) {
+            Ok(0) => break,
+            Ok(n) => out.extend_from_slice(&buf[..n]),
+            Err(e) if e.is_io() => continue,
+            Err(e) => { final_err = Some(e); break; }
+        }
+    }
+    drop(decoder);
+    (out, src.calls, final_err)
+}
+
+/// Exhaustively injects faults in data/trailer reads, including bounded decoding and corruption.
+fn main() {
+    let input = noise(2500);
+    let bytes = encode(&input, 1000);
+    let st = SeekTable::from_seekable(&mut BytesWrapper::new(&bytes)).unwrap();
+    let mut trials = 0;
+    for chunk in [3, 64, 1000] {
+        for output_chunk in [1, 127, 1000, 4096] {
+            for range in [0..2500, 500..2000, 1000..2000] {
+                let (_, calls, err) = decode(&bytes, &st, range.clone(), chunk, output_chunk, 0..0);
+                assert!(err.is_none());
+                for call in 0..calls {
+                    let (out, _, err) = decode(&bytes, &st, range.clone(), chunk, output_chunk, call..call+2);
+                    assert!(err.is_none(), "{err:?}");
+                    assert_eq!(out, input[range.start as usize..range.end as usize]);
+                    trials += 1;
+                }
+            }
+        }
+    }
+    for frame in 0..st.num_frames() {
+        let mut corrupt = bytes.clone();
+        let frame_end = st.frame_end_comp(frame).unwrap() as usize;
+        corrupt[frame_end - 1] ''^= 0xff;
+        let upper = st.frame_end_decomp(frame).unwrap();
+        for chunk in [1, 3, 64, 1000] {
+            let (_, calls, _) = decode(&bytes, &st, 0..upper, chunk, 4096, 0..0);
+            for call in 0..calls {
+                let (_, _, err) = decode(&corrupt, &st, 0..upper, chunk, 4096, call..call+2);
+                assert!(err.is_some_and(|e| e.is_zstd() && e.to_string().contains("checksum")));
+                trials += 1;
+            }
+        }
+    }
+    println!("Passed {trials} combined fault-injection trials");
+}
+EOF
+cargo run --offline --manifest-path "$review_dir/Cargo.toml"' in /home/at/code/rust/zeekstd
+ succeeded in 5044ms:
+   Compiling jobserver v0.1.35
+   Compiling cc v1.4.5
+   Compiling zstd-sys v2.1.0+zstd.1.5.7
+   Compiling zeekstd v0.6.2 (/home/at/code/rust/zeekstd/lib)
+   Compiling zeekstd-review v0.0.0 (/tmp/zeekstd-review.GeCuD3)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.24s
+     Running `/tmp/zeekstd-review.GeCuD3/target/debug/zeekstd-review`
+Passed 15363 combined fault-injection trials
+
+exec
+/run/current-system/sw/bin/zsh -lc "rg -A12 'name = \"zstd(-safe|-sys)?\"' Cargo.lock; git diff --numstat 92c210284eccbbd4f1f6b45f8c93d446ffec7ddc; for dir in / /home /home/at /home/at/code /home/at/code/rust; do for file in AGENTS.override.md AGENTS.md; do if [ -f \""'$dir/$file" ]; then printf '"'\\n%s\\n' \""'$dir/$file"; cat "$dir/$file"; fi; done; done' in /home/at/code/rust/zeekstd
+ succeeded in 0ms:
+name = "zstd"
+version = "0.13.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e91ee311a569c327171651566e07972200e76fcfe2242a4fa446149a3881c08a"
+dependencies = [
+ "zstd-safe",
+]
+
+[[package]]
+name = "zstd-safe"
+version = "7.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f49c4d5f0abb602a93fb8736af2a4f4dd9512e36f7f570d66e65ff867ed3b9d"
+dependencies = [
+ "zstd-sys",
+]
+
+[[package]]
+name = "zstd-sys"
+version = "2.0.16+zstd.1.5.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "91e19ebc2adc8f83e43039e79776e3fda8ca919132d68a1fed6a5faca2683748"
+dependencies = [
+ "cc",
+ "pkg-config",
+]
+11	0	CHANGELOG_LIB.md
+162	2	lib/src/decode.rs
+218	21	lib/src/encode.rs
+16	0	lib/src/error.rs
+9	1	lib/src/seekable.rs
+
+exec
+/run/current-system/sw/bin/zsh -lc 'cargo update --offline --manifest-path /tmp/zeekstd-review.GeCuD3/Cargo.toml -p zstd-safe --precise 7.2.4 && cargo update --offline --manifest-path /tmp/zeekstd-review.GeCuD3/Cargo.toml -p zstd-sys --precise 2.0.16+zstd.1.5.7 && cargo run --offline --manifest-path /tmp/zeekstd-review.GeCuD3/Cargo.toml; git status --short' in /home/at/code/rust/zeekstd
+ succeeded in 4040ms:
+   Compiling zeekstd v0.6.2 (/home/at/code/rust/zeekstd/lib)
+   Compiling zeekstd-review v0.0.0 (/tmp/zeekstd-review.GeCuD3)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.41s
+     Running `/tmp/zeekstd-review.GeCuD3/target/debug/zeekstd-review`
+Passed 15363 combined fault-injection trials
+?? .claude/
+?? .syncthing..CHANGELOG_LIB.md.swp.tmp
+?? AGENTS.md
+?? CLAUDE.md
+?? Cargo.lock.zst
+?? ai-code-reviews/
+
+codex
+No actionable regressions were found. Workspace tests, no-default-features tests, and 15,363 additional fault-injection trials passed, including read failures around frame boundaries and checksum verification.
+No actionable regressions were found. Workspace tests, no-default-features tests, and 15,363 additional fault-injection trials passed, including read failures around frame boundaries and checksum verification.
+exit=0

@@ -1,0 +1,11 @@
+[package]
+name = "zk_interop"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+zeekstd = { path = "/home/at/code/rust/zeekstd/lib" }
+zstd-safe = { version = "7.2.4", features = ["std", "seekable"] }
+
+[profile.release]
+debug = 1
