@@ -10,12 +10,22 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Fixed
 
 - `RawEncoder::with_opts` now returns an error if `FrameSizePolicy` has a frame size of 0
+- `Encoder` no longer corrupts the archive when a write to its writer fails partway and the caller
+  retries: bytes the writer accepted are not resent, input consumed before the failure is reported
+  as consumed instead of failing the call, and the error surfaces on the next call
+- `Decoder::decompress` reports the bytes it already placed in the output buffer when a later read
+  from the source fails, instead of dropping them; the error surfaces on the next call
+- The `Seekable` impl for `Read + Seek` sources retries reads that fail with
+  `ErrorKind::Interrupted`
 
 ### Added
 
 The `Error` struct has changed:
 
 - The method `Error::is_invalid_frame_size_policy()` was added
+- `From<Error> for std::io::Error` was implemented. It hands back the original IO error, so that
+  callers can act on its kind. `Encoder`'s `Write` impl uses it instead of wrapping every error as
+  `ErrorKind::Other`
 
 ## [0.6.2]
 

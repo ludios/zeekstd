@@ -1,3 +1,4 @@
+// Model-output: Claude Fable 5.1
 use crate::{
     SEEK_TABLE_INTEGRITY_SIZE, SKIPPABLE_HEADER_SIZE,
     error::{Error, Result},
@@ -118,7 +119,14 @@ where
     }
 
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
-        Ok(self.read(buf)?)
+        // A caller of `Seekable` cannot tell an interruption from a failure, so retry it here, as
+        // `read_exact` does
+        loop {
+            match std::io::Read::read(self, buf) {
+                Err(err) if err.kind() == std::io::ErrorKind::Interrupted => {}
+                res => return Ok(res?),
+            }
+        }
     }
 
     fn seek_table_integrity(&mut self, format: Format) -> Result<[u8; SEEK_TABLE_INTEGRITY_SIZE]> {

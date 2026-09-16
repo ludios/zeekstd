@@ -1,3 +1,4 @@
+// Model-output: Claude Fable 5.1
 use alloc::vec;
 use alloc::vec::Vec;
 use zstd_safe::{DCtx, InBuffer, OutBuffer, ResetDirective};
@@ -220,7 +221,13 @@ impl<'a, S: Seekable> Decoder<'a, S> {
         let mut output_progress = 0;
         while self.offset < self.offset_limit && output_progress < buf.len() {
             if self.in_buf_pos == self.in_buf_limit {
-                self.in_buf_limit = self.src.read(&mut self.in_buf)?;
+                self.in_buf_limit = match self.src.read(&mut self.in_buf) {
+                    Ok(n) => n,
+                    // Bytes already placed in `buf` must be reported, so the failed read is left
+                    // for the next call, which retries it and reports its error
+                    Err(_) if output_progress > 0 => break,
+                    Err(err) => return Err(err),
+                };
                 self.in_buf_pos = 0;
             }
 
@@ -936,5 +943,131 @@ mod tests {
         let n = decoder.decompress(&mut output).unwrap();
         assert_eq!(n, INPUT.len() - 101);
         assert_eq!(INPUT.as_bytes()[101..], output[..n]);
+    }
+
+    /// Round trips through sources that fail partway, retrying like a caller that keeps what it
+    /// already received would.
+    #[cfg(feature = "std")]
+    mod io_errors {
+        use std::{
+            io::{self, Cursor, ErrorKind, Read, Seek, SeekFrom},
+            ops::Range,
+        };
+
+        use super::*;
+
+        /// A source that returns at most `chunk` bytes per read and fails, with `kind`, on every
+        /// read whose index (counting from zero) lies in `failing_reads`.
+        struct FlakySource<'a> {
+            inner: Cursor<&'a [u8]>,
+            chunk: usize,
+            reads: usize,
+            failing_reads: Range<usize>,
+            kind: ErrorKind,
+        }
+
+        impl Read for FlakySource<'_> {
+            fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+                let read = self.reads;
+                self.reads += 1;
+                if self.failing_reads.contains(&read) {
+                    return Err(io::Error::from(self.kind));
+                }
+                let n = buf.len().min(self.chunk);
+                io::Read::read(&mut self.inner, &mut buf[..n])
+            }
+        }
+
+        impl Seek for FlakySource<'_> {
+            fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
+                self.inner.seek(pos)
+            }
+        }
+
+        /// Decompresses `seekable` through a source whose reads in `failing_reads` fail with
+        /// `kind`, retrying as a caller would. Returns the output, how many errors reached the
+        /// caller, and how many reads the source saw.
+        fn decompress_with_retries(
+            seekable: &[u8],
+            seek_table: &SeekTable,
+            failing_reads: Range<usize>,
+            kind: ErrorKind,
+        ) -> (Vec<u8>, usize, usize) {
+            let mut src = FlakySource {
+                inner: Cursor::new(seekable),
+                chunk: 64,
+                reads: 0,
+                failing_reads,
+                kind,
+            };
+            let mut decoder = DecodeOptions::new(&mut src)
+                .seek_table(seek_table.clone())
+                .into_decoder()
+                .unwrap();
+            let mut output = vec![];
+            let mut buf = vec![0; INPUT.len()];
+            let mut errors = 0;
+            loop {
+                match decoder.decompress(&mut buf) {
+                    Ok(0) => break,
+                    Ok(n) => output.extend(&buf[..n]),
+                    Err(err) => {
+                        assert!(err.is_io());
+                        errors += 1;
+                    }
+                }
+            }
+            drop(decoder);
+            (output, errors, src.reads)
+        }
+
+        #[test]
+        fn read_errors_never_lose_output() {
+            let seekable =
+                new_seekable(Some(FrameSizePolicy::Uncompressed(INPUT.len() as u32 / 7)));
+            let seek_table = SeekTable::from_seekable(&mut BytesWrapper::new(&seekable)).unwrap();
+            let (_, _, reads) =
+                decompress_with_retries(&seekable, &seek_table, 0..0, ErrorKind::TimedOut);
+            for fail_at in 0..reads {
+                let (output, errors, _) = decompress_with_retries(
+                    &seekable,
+                    &seek_table,
+                    fail_at..fail_at + 2,
+                    ErrorKind::TimedOut,
+                );
+                // Two failures in a row: whatever the first one interrupted, the second hits a
+                // fresh call and must reach the caller
+                assert!(
+                    errors >= 1,
+                    "no error reported for reads {fail_at} and {}",
+                    fail_at + 1
+                );
+                assert_eq!(
+                    output,
+                    INPUT.as_bytes(),
+                    "wrong output after reads {fail_at} and {} failed",
+                    fail_at + 1
+                );
+            }
+        }
+
+        #[test]
+        fn interrupted_reads_are_retried_internally() {
+            let seekable =
+                new_seekable(Some(FrameSizePolicy::Uncompressed(INPUT.len() as u32 / 7)));
+            let seek_table = SeekTable::from_seekable(&mut BytesWrapper::new(&seekable)).unwrap();
+            let (_, _, reads) =
+                decompress_with_retries(&seekable, &seek_table, 0..0, ErrorKind::Interrupted);
+            for fail_at in 0..reads {
+                let (output, errors, _) = decompress_with_retries(
+                    &seekable,
+                    &seek_table,
+                    fail_at..fail_at + 2,
+                    ErrorKind::Interrupted,
+                );
+                assert_eq!(errors, 0, "interruption of read {fail_at} leaked");
+                assert_eq!(output, INPUT.as_bytes());
+            }
+        }
     }
 }

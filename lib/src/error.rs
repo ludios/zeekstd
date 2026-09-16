@@ -1,3 +1,4 @@
+// Model-output: Claude Fable 5.1
 use zstd_safe::{ErrorCode, get_error_name, zstd_sys::ZSTD_ErrorCode};
 
 /// A `Result` alias where the `Err` case is `zeekstd::Error`.
@@ -98,6 +99,19 @@ impl From<std::io::Error> for Error {
     fn from(value: std::io::Error) -> Self {
         Self {
             kind: Kind::IO(value),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+impl From<Error> for std::io::Error {
+    /// Hands back the original IO error, so that its kind can be acted on, and wraps any other
+    /// error as [`std::io::ErrorKind::Other`].
+    fn from(value: Error) -> Self {
+        match value.kind {
+            Kind::IO(err) => err,
+            _ => Self::other(value),
         }
     }
 }
