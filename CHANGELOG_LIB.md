@@ -9,6 +9,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- `Encoder`'s `Write::flush` now also flushes the data zstd holds for the current frame, so
+  everything written before the call reaches the writer
 - A seek table with zero frames, which the reference implementation writes for empty input, is
   decoded to empty output instead of panicking. `SeekTable::frame_index_comp` and
   `SeekTable::frame_index_decomp` return 0 for an empty table
@@ -36,6 +38,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `ErrorKind::Interrupted`
 
 ### Added
+
+- `RawEncoder::flush` flushes the compression context into an output buffer without ending the
+  frame
 
 The `Error` struct has changed:
 

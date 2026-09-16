@@ -11,7 +11,7 @@ reasons given in their entries.
 When a fix lands, drop the `#[ignore]` from its test and delete the entry here.
 
 Fixed since the review and therefore not listed: 1, 2 and 8 (92c2102), 9 (7aaf00e), 13 (06f093f),
-3, 10 and the library half of 12 (2026-09-16), 7 (11b509a and 2026-09-16) and the decoder arithmetic of 14 (92c2102). The two repros
+3, 10, 15 and the library half of 12 (2026-09-16), 7 (11b509a and 2026-09-16) and the decoder arithmetic of 14 (92c2102). The two repros
 Codex gave for 2 and 8 are kept as regression tests in `lib/tests/known_bugs.rs`.
 
 ## Medium
@@ -33,17 +33,6 @@ installed here, so this rests on code reading. `oversized_skippable_header_is_re
 64-bit and would catch it on a 32-bit CI job.
 
 Fix: `checked_add`, or compare in `u64`.
-
-### 15. `Encoder::flush` does not flush data buffered inside zstd
-
-The `Write` impl flushes zeekstd's output buffer and the writer but never asks zstd to flush, so
-input held in the compression context stays there. Writing `hello` and flushing delivers zero bytes
-to the writer.
-
-Test: `flush_pushes_accepted_input_to_the_writer`.
-
-Fix: drain `ZSTD_e_flush` through `compress_stream2` until it reports 0, add the output to the
-frame's compressed size, then flush the buffer and the writer.
 
 ### 18. Decoder reuse after a zstd error has no guard
 

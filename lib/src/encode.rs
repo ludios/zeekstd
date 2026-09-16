@@ -479,6 +479,36 @@ impl RawEncoder<'_> {
         Ok(EpilogueProgress::new(out_buf.pos(), 0))
     }
 
+    /// Flushes the data that is buffered inside the compression context into `output` without
+    /// ending the frame.
+    ///
+    /// Call this repetitively until [`EpilogueProgress::data_left`] is zero. Everything consumed
+    /// before the call is then in `output` or in an earlier output. A flush closes a block, which
+    /// costs a little compression ratio, so it is meant for callers that need what they have
+    /// written so far to reach the output now.
+    ///
+    /// # Errors
+    ///
+    /// If flushing fails.
+    pub fn flush(&mut self, output: &mut [u8]) -> Result<EpilogueProgress> {
+        let mut empty_buf = InBuffer::around(&[]);
+        let mut out_buf = OutBuffer::around(output);
+
+        loop {
+            let n = self.cctx.compress_stream2(
+                &mut out_buf,
+                &mut empty_buf,
+                ZSTD_EndDirective::ZSTD_e_flush,
+            )?;
+
+            if n == 0 || out_buf.pos() == out_buf.capacity() {
+                // Casting should always be fine
+                self.frame_c_size += out_buf.pos() as u32;
+                return Ok(EpilogueProgress::new(out_buf.pos(), n));
+            }
+        }
+    }
+
     /// Returns a reference to the internal [`SeekTable`].
     ///
     /// # Examples
@@ -831,6 +861,20 @@ impl<W: std::io::Write> Encoder<'_, W> {
 
         Ok(())
     }
+
+    /// Moves everything the compression context still holds for the current frame into the
+    /// output buffer, writing the buffer out whenever it fills up.
+    fn drain_cctx(&mut self) -> Result<()> {
+        loop {
+            self.flush_out_buf(false)?;
+            let prog = self.raw.flush(&mut self.out_buf[self.out_buf_pos..])?;
+            self.out_buf_pos += prog.out_progress;
+
+            if prog.data_left == 0 {
+                return Ok(());
+            }
+        }
+    }
 }
 
 #[cfg(feature = "std")]
@@ -839,7 +883,10 @@ impl<W: std::io::Write> std::io::Write for Encoder<'_, W> {
         Ok(self.compress(buf)?)
     }
 
+    /// Delivers everything written so far to the writer and flushes it, without ending the
+    /// current frame.
     fn flush(&mut self) -> std::io::Result<()> {
+        self.drain_cctx()?;
         self.flush_out_buf(true)?;
         self.writer.flush()
     }
@@ -937,6 +984,43 @@ mod tests {
             // Check that the Content_Checksum_flag is set
             assert!(descriptor & 0x4 > 0);
         }
+    }
+
+    /// A flush must deliver what was written before it, and must not end the frame.
+    #[test]
+    #[cfg(feature = "std")]
+    fn flush_delivers_input_without_ending_the_frame() {
+        use std::io::Write;
+
+        let mut out = Vec::new();
+        let mut encoder = Encoder::new(&mut out).unwrap();
+        encoder.flush().unwrap();
+        assert_eq!(encoder.written_compressed(), 0, "nothing to flush yet");
+
+        encoder.write_all(INPUT.as_bytes()).unwrap();
+        encoder.flush().unwrap();
+        let flushed = encoder.written_compressed();
+        assert!(flushed > 0, "the flushed input did not reach the writer");
+
+        encoder.write_all(INPUT.as_bytes()).unwrap();
+        let total = encoder.finish().unwrap();
+        assert!(total > flushed);
+        assert_eq!(out.len() as u64, total);
+
+        let seek_table =
+            crate::SeekTable::from_seekable(&mut crate::BytesWrapper::new(&out)).unwrap();
+        assert_eq!(seek_table.num_frames(), 1);
+        let mut decoder = crate::Decoder::new(crate::BytesWrapper::new(&out)).unwrap();
+        let mut restored = vec![0; INPUT.len() * 2 + 1];
+        let mut n = 0;
+        loop {
+            let progress = decoder.decompress(&mut restored[n..]).unwrap();
+            if progress == 0 {
+                break;
+            }
+            n += progress;
+        }
+        assert_eq!(&restored[..n], INPUT.repeat(2).as_bytes());
     }
 
     /// Round trips through writers that fail partway, retrying like a caller that still holds its

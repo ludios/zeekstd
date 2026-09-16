@@ -296,7 +296,6 @@ fn oversized_skippable_header_is_rejected() {
 
 /// Finding 15: `Write::flush` must push data that zstd still holds through to the writer.
 #[test]
-#[ignore = "known unfixed: Encoder::flush never asks zstd to flush its own buffers"]
 fn flush_pushes_accepted_input_to_the_writer() {
     let mut out = Vec::new();
     let mut encoder = Encoder::new(&mut out).unwrap();
