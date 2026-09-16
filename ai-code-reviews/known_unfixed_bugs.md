@@ -11,20 +11,8 @@ reasons given in their entries.
 When a fix lands, drop the `#[ignore]` from its test and delete the entry here.
 
 Fixed since the review and therefore not listed: 1, 2 and 8 (92c2102), 9 (7aaf00e), 13 (06f093f),
-7 (11b509a and the commits of 2026-09-16) and the decoder arithmetic of 14 (92c2102). The two repros
+3 (2026-09-16), 7 (11b509a and 2026-09-16) and the decoder arithmetic of 14 (92c2102). The two repros
 Codex gave for 2 and 8 are kept as regression tests in `lib/tests/known_bugs.rs`.
-
-## High
-
-### 3. `SeekTable::from_reader` parses unread buffer bytes as entries
-
-`from_reader` in `lib/src/seek_table.rs` hands the whole buffer to `parse_entries` regardless of
-how many bytes the last `read` returned. A reader that returns one byte per call turns the entry
-`(123, 456)` into `(123, 0)`, and a Head table truncated to 18 of 25 bytes is accepted.
-
-Tests: `from_reader_survives_one_byte_reads`, `from_reader_rejects_truncated_table`.
-
-Fix: track how much of the buffer is filled and parse only that, as `from_seekable_format` does.
 
 ## Medium
 

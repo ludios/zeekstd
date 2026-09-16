@@ -222,6 +222,51 @@ impl Parser {
         Ok(())
     }
 
+    /// The number of bytes the entries of the table take up.
+    fn entries_len(&self) -> usize {
+        self.num_frames * self.size_per_frame
+    }
+
+    /// Parses every entry of the table from `read`, using `buf` as scratch space, where
+    /// `buf[..filled]` already holds the first bytes of the entries. `read` fills a slice from the
+    /// source and returns the number of bytes it put there, zero at the end of the source. Reads
+    /// stop at the end of the entries, so a source that continues after the seek table is left
+    /// positioned there.
+    ///
+    /// Fails if the source ends before the last entry, or if memory for an entry cannot be
+    /// reserved.
+    fn parse_all(
+        &mut self,
+        buf: &mut [u8],
+        mut filled: usize,
+        mut read: impl FnMut(&mut [u8]) -> Result<usize>,
+    ) -> Result<()> {
+        // Entry bytes not parsed yet, the first `filled` of which sit in `buf`
+        let mut remaining = self.entries_len();
+
+        loop {
+            let parsed = self.parse_entries(&buf[..filled])?;
+            remaining -= parsed;
+            if remaining == 0 {
+                return Ok(());
+            }
+
+            buf.copy_within(parsed..filled, 0);
+            filled -= parsed;
+            // Less than one entry is left in the buffer, so more is owed than is buffered
+            assert!(
+                filled < remaining,
+                "unparsed bytes exceed the entry bytes left"
+            );
+            let end = buf.len().min(remaining);
+            let n = read(&mut buf[filled..end])?;
+            if n == 0 {
+                return Err(Error::zstd(ZSTD_ErrorCode::ZSTD_error_corruption_detected));
+            }
+            filled += n;
+        }
+    }
+
     fn verify(&self) -> Result<()> {
         if self.entries.0.len() == self.num_frames + 1 {
             Ok(())
@@ -446,7 +491,8 @@ impl SeekTable {
 
     /// Reads and parses a seek table from `reader`.
     ///
-    /// Only works if the seek table is in [`Head`] format.
+    /// Only works if the seek table is in [`Head`] format. Reads only the seek table, so a reader
+    /// that continues with other data is left positioned after it.
     ///
     /// # Errors
     ///
@@ -468,34 +514,16 @@ impl SeekTable {
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn from_reader(mut reader: impl std::io::Read) -> Result<Self> {
-        let mut buf = [0u8; SKIPPABLE_HEADER_SIZE + SEEK_TABLE_INTEGRITY_SIZE];
-        reader.read_exact(&mut buf)?;
+        let mut head = [0u8; SKIPPABLE_HEADER_SIZE + SEEK_TABLE_INTEGRITY_SIZE];
+        reader.read_exact(&mut head)?;
 
-        let mut parser = Parser::from_bytes(&buf[SKIPPABLE_HEADER_SIZE..])?;
-        parser.verify_skippable_header(&buf)?;
+        let mut parser = Parser::from_bytes(&head[SKIPPABLE_HEADER_SIZE..])?;
+        parser.verify_skippable_header(&head)?;
 
-        // Data that is left to be parsed
-        let mut remaining =
-            parser.seek_table_size - SKIPPABLE_HEADER_SIZE - SEEK_TABLE_INTEGRITY_SIZE;
-        let mut buf = vec![0u8; 8192.min(remaining)];
-        let buf_len = buf.len();
-
-        let mut offset = 0;
-        loop {
-            if remaining > 0 && reader.read(&mut buf[offset..buf_len.min(remaining)])? == 0 {
-                // Error if src is EOF but there is data remaining
-                return Err(Error::zstd(ZSTD_ErrorCode::ZSTD_error_corruption_detected));
-            }
-
-            let n = parser.parse_entries(&buf)?;
-            remaining -= n;
-            if remaining == 0 {
-                break;
-            }
-
-            offset = buf_len - n;
-            buf.copy_within(n.., 0);
-        }
+        let mut buf = vec![0u8; 8192.min(parser.entries_len())];
+        parser.parse_all(&mut buf, 0, |dst| {
+            Ok(crate::seekable::read_retrying(&mut reader, dst)?)
+        })?;
         parser.verify()?;
 
         Ok(parser.into())
@@ -1231,6 +1259,20 @@ mod tests {
         let mut wrapper = BytesWrapper::new(buf.get_ref());
         let from_bytes = SeekTable::from_seekable_format(&mut wrapper, format).unwrap();
         assert_eq!(from_bytes, st);
+    }
+
+    #[test]
+    #[cfg(feature = "std")]
+    fn from_reader_stops_at_the_end_of_the_table() {
+        let st = seek_table(3);
+        let mut ser = st.clone().into_format_serializer(Format::Head);
+        let mut bytes = vec![0; ser.encoded_len()];
+        assert_eq!(ser.write_into(&mut bytes), bytes.len());
+        bytes.extend(b"frame data");
+
+        let mut reader = std::io::Cursor::new(&bytes);
+        assert_eq!(SeekTable::from_reader(&mut reader).unwrap(), st);
+        assert_eq!(reader.position() as usize, ser.encoded_len());
     }
 
     // Same as the std cycle test but with a BufReader. A BufReaders `read()` doesn't always fill

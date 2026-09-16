@@ -175,7 +175,6 @@ fn legacy_archive_with_table_checksum(content: &[u8]) -> (Vec<u8>, usize) {
 
 /// Finding 3: `from_reader` must not turn unread buffer bytes into entries.
 #[test]
-#[ignore = "known unfixed: from_reader parses the whole buffer regardless of how much was read"]
 fn from_reader_survives_one_byte_reads() {
     let table = one_frame_table(123, 456, Format::Head);
     let st = SeekTable::from_reader(Chunked::new(&table, 1)).unwrap();
@@ -185,7 +184,6 @@ fn from_reader_survives_one_byte_reads() {
 
 /// Finding 3: a truncated detached table must be rejected, not read as zeros.
 #[test]
-#[ignore = "known unfixed: from_reader accepts a truncated Head table"]
 fn from_reader_rejects_truncated_table() {
     let table = one_frame_table(123, 456, Format::Head);
     for len in SKIPPABLE_HEADER_SIZE + INTEGRITY_SIZE..table.len() {

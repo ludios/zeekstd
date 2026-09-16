@@ -109,6 +109,21 @@ impl From<OffsetFrom> for std::io::SeekFrom {
     }
 }
 
+/// Reads from `reader` into `buf` once, retrying when the read is interrupted, as `read_exact`
+/// does. Returns the number of bytes read, zero at the end of the reader.
+#[cfg(feature = "std")]
+pub(crate) fn read_retrying<R: std::io::Read + ?Sized>(
+    reader: &mut R,
+    buf: &mut [u8],
+) -> std::io::Result<usize> {
+    loop {
+        match reader.read(buf) {
+            Err(err) if err.kind() == std::io::ErrorKind::Interrupted => {}
+            res => return res,
+        }
+    }
+}
+
 #[cfg(feature = "std")]
 impl<T> Seekable for T
 where
@@ -119,14 +134,8 @@ where
     }
 
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
-        // A caller of `Seekable` cannot tell an interruption from a failure, so retry it here, as
-        // `read_exact` does
-        loop {
-            match std::io::Read::read(self, buf) {
-                Err(err) if err.kind() == std::io::ErrorKind::Interrupted => {}
-                res => return Ok(res?),
-            }
-        }
+        // A caller of `Seekable` cannot tell an interruption from a failure, so retry it here
+        Ok(read_retrying(self, buf)?)
     }
 
     fn seek_table_integrity(&mut self, format: Format) -> Result<[u8; SEEK_TABLE_INTEGRITY_SIZE]> {
