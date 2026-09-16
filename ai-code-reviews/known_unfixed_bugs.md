@@ -11,7 +11,7 @@ reasons given in their entries.
 When a fix lands, drop the `#[ignore]` from its test and delete the entry here.
 
 Fixed since the review and therefore not listed: 1, 2 and 8 (92c2102), 9 (7aaf00e), 13 (06f093f),
-3, 10, 15 and the library half of 12 (2026-09-16), 7 (11b509a and 2026-09-16) and the decoder arithmetic of 14 (92c2102). The two repros
+3, 10, 15, 19 and the library half of 12 (2026-09-16), 7 (11b509a and 2026-09-16) and the decoder arithmetic of 14 (92c2102). The two repros
 Codex gave for 2 and 8 are kept as regression tests in `lib/tests/known_bugs.rs`.
 
 ## Medium
@@ -42,18 +42,6 @@ call keeps returning an error. `decoder_keeps_failing_after_a_zstd_error` passes
 guard, so this entry is a contract violation without a demonstrated effect.
 
 Fix: remember the failure and return an error from `decompress` until `reset` is called.
-
-## Low
-
-### 19. Serializer panics on an empty output buffer
-
-The descriptor byte in `write_integrity` is written as `buf[buf_pos]` without checking the buffer
-length, unlike the fields around it. Serializing an empty table into a 12-byte buffer and then
-into an empty one panics. The `Read` impl of `Serializer` reaches the same code.
-
-Tests: `serializer_accepts_empty_buffer_foot`, `serializer_accepts_empty_buffer_head`.
-
-Fix: return 0 for an empty buffer and bounds-check the descriptor write like the other fields.
 
 ## Nits still present
 

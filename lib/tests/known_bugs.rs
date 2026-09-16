@@ -338,13 +338,11 @@ fn empty_buffer_writes_nothing(format: Format) {
 }
 
 #[test]
-#[ignore = "known unfixed: the descriptor byte write indexes buf[0] of an empty slice"]
 fn serializer_accepts_empty_buffer_foot() {
     empty_buffer_writes_nothing(Format::Foot);
 }
 
 #[test]
-#[ignore = "known unfixed: the descriptor byte write indexes buf[0] of an empty slice"]
 fn serializer_accepts_empty_buffer_head() {
     empty_buffer_writes_nothing(Format::Head);
 }

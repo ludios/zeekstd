@@ -9,6 +9,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- `Serializer::write_into` returns 0 for an empty buffer instead of panicking
 - `Encoder`'s `Write::flush` now also flushes the data zstd holds for the current frame, so
   everything written before the call reaches the writer
 - A seek table with zero frames, which the reference implementation writes for empty input, is

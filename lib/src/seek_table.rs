@@ -983,6 +983,11 @@ impl Serializer {
     /// Returns the number of bytes written. Call this repetitively until `0` is returned to
     /// serialize the entire seek table.
     pub fn write_into(&mut self, buf: &mut [u8]) -> usize {
+        // The field writers below assume room for at least one byte
+        if buf.is_empty() {
+            return 0;
+        }
+
         let mut buf_pos = 0;
 
         // Write skippable header
@@ -1156,6 +1161,22 @@ mod tests {
         }
 
         assert_eq!(pos, ser.encoded_len());
+    }
+
+    #[test]
+    fn serializer_writes_nothing_into_an_empty_buffer() {
+        for format in [Format::Head, Format::Foot] {
+            for num_frames in [0, 3] {
+                let mut ser = seek_table(num_frames).into_format_serializer(format);
+                // An empty destination at every position of the output
+                let mut pos = 0;
+                while pos < ser.encoded_len() {
+                    assert_eq!(ser.write_into(&mut []), 0);
+                    pos += ser.write_into(&mut [0u8; 1]);
+                }
+                assert_eq!(ser.write_into(&mut []), 0);
+            }
+        }
     }
 
     fn test_serde_cycle(format: Format, num_frames: u32) {
