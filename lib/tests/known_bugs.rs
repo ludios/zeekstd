@@ -253,9 +253,16 @@ fn corrupted_legacy_table_checksum_is_rejected() {
 
 /// Finding 12: an archive with zero frames is valid and decodes to nothing.
 #[test]
-#[ignore = "known unfixed: frame_index_at computes num_frames - 1 for an empty table"]
 fn zero_frame_archive_decodes_to_nothing() {
     let archive = foot_table_without_entries(0);
+    let mut reference = zstd_safe::seekable::Seekable::create();
+    reference.init_buff(&archive).unwrap();
+    assert_eq!(
+        reference.num_frames(),
+        0,
+        "the reference rejects the fixture"
+    );
+
     let st = SeekTable::from_seekable(&mut BytesWrapper::new(&archive)).unwrap();
     assert_eq!(st.num_frames(), 0);
     let mut decoder = Decoder::new(BytesWrapper::new(&archive)).unwrap();
@@ -264,11 +271,17 @@ fn zero_frame_archive_decodes_to_nothing() {
 
 /// Finding 12: frame lookups on an empty table must not underflow.
 #[test]
-#[ignore = "known unfixed: frame_index_decomp underflows on an empty table"]
 fn zero_frame_table_lookups_do_not_panic() {
     let st = SeekTable::new();
     assert_eq!(st.frame_index_decomp(0), 0);
     assert_eq!(st.frame_index_comp(0), 0);
+    assert!(
+        st.frame_start_comp(0)
+            .unwrap_err()
+            .is_frame_index_too_large()
+    );
+    assert_eq!(st.size_decomp(), 0);
+    assert_eq!(st.max_frame_size_decomp(), 0);
 }
 
 /// Finding 14: a skippable header whose size field is near `u32::MAX` must fail cleanly. On

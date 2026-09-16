@@ -557,6 +557,8 @@ impl SeekTable {
 
     /// The frame index at the given compressed offset.
     ///
+    /// Returns 0 for an empty seek table, which has no frame at any offset.
+    ///
     /// # Examples
     ///
     /// ```
@@ -575,6 +577,8 @@ impl SeekTable {
     }
 
     /// The frame index at the given decompressed offset.
+    ///
+    /// Returns 0 for an empty seek table, which has no frame at any offset.
     ///
     /// # Examples
     ///
@@ -928,7 +932,8 @@ impl SeekTable {
 
     fn frame_index_at(&self, offset: u64, offset_at: impl Fn(u32) -> u64) -> u32 {
         if offset >= offset_at(self.num_frames()) {
-            return self.num_frames() - 1;
+            // An empty table has no frame to point at
+            return self.num_frames().saturating_sub(1);
         }
 
         let mut low = 0;

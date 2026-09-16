@@ -9,6 +9,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A seek table with zero frames, which the reference implementation writes for empty input, is
+  decoded to empty output instead of panicking. `SeekTable::frame_index_comp` and
+  `SeekTable::frame_index_decomp` return 0 for an empty table
 - `SeekTable::from_seekable_format` no longer fails or panics when the source returns fewer than
   17 bytes per read
 - `SeekTable::from_reader` parses only the bytes the reader returned. Short reads no longer turn

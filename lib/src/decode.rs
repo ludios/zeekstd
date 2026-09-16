@@ -217,6 +217,11 @@ impl<'a, S: Seekable> Decoder<'a, S> {
         buf: &mut [u8],
         prefix: Option<&'b [u8]>,
     ) -> Result<usize> {
+        // An empty archive has nothing to read or produce
+        if self.seek_table.num_frames() == 0 {
+            return Ok(0);
+        }
+
         if self.read_compressed == 0 {
             self.frame_idx = self.seek_table.frame_index_decomp(self.offset);
             let start_pos = self.seek_table.frame_start_comp(self.frame_idx)?;

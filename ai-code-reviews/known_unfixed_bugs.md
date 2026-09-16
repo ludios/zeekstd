@@ -11,7 +11,7 @@ reasons given in their entries.
 When a fix lands, drop the `#[ignore]` from its test and delete the entry here.
 
 Fixed since the review and therefore not listed: 1, 2 and 8 (92c2102), 9 (7aaf00e), 13 (06f093f),
-3 and 10 (2026-09-16), 7 (11b509a and 2026-09-16) and the decoder arithmetic of 14 (92c2102). The two repros
+3, 10 and the library half of 12 (2026-09-16), 7 (11b509a and 2026-09-16) and the decoder arithmetic of 14 (92c2102). The two repros
 Codex gave for 2 and 8 are kept as regression tests in `lib/tests/known_bugs.rs`.
 
 ## Medium
@@ -24,17 +24,6 @@ zeekstd decodes it. This is a decision, not an oversight: either verify the chec
 bits of XXH64 over each frame's decompressed content, or qualify the README's compatibility claim.
 
 Test: `corrupted_legacy_table_checksum_is_rejected`, which also checks the reference decoder.
-
-### 12. Zero-frame archives panic
-
-The reference implementation writes a 17-byte archive for empty input and decodes it to nothing.
-`frame_index_at` computes `num_frames() - 1` for the empty table, so decoding and lookups panic
-in debug builds and return a frame index error in release builds.
-
-Tests: `zero_frame_archive_decodes_to_nothing`, `zero_frame_table_lookups_do_not_panic`.
-
-Fix: return 0 from `frame_index_at` for an empty table and make the decoder finish without reading
-when nothing is to be produced.
 
 ### 14. Skippable header size overflows on 32-bit targets
 
