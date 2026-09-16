@@ -516,7 +516,7 @@ impl<S: Seekable> Decoder<'_, S> {
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 impl<S: Seekable> std::io::Read for Decoder<'_, S> {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        self.decompress(buf).map_err(std::io::Error::other)
+        Ok(self.decompress(buf)?)
     }
 }
 

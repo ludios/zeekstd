@@ -24,8 +24,8 @@ The `Error` struct has changed:
 
 - The method `Error::is_invalid_frame_size_policy()` was added
 - `From<Error> for std::io::Error` was implemented. It hands back the original IO error, so that
-  callers can act on its kind. `Encoder`'s `Write` impl uses it instead of wrapping every error as
-  `ErrorKind::Other`
+  callers can act on its kind. The `Write` impl of `Encoder` and the `Read` impl of `Decoder` use
+  it instead of wrapping every error as `ErrorKind::Other`
 
 ## [0.6.2]
 
