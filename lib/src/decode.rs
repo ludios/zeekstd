@@ -3,7 +3,7 @@
 // Model-output: Claude Opus 5.5
 use alloc::vec;
 use alloc::vec::Vec;
-use zstd_safe::{DCtx, InBuffer, OutBuffer, ResetDirective};
+use zstd_safe::{DCtx, ErrorCode, InBuffer, OutBuffer, ResetDirective};
 
 use crate::{
     Error,
@@ -138,6 +138,31 @@ pub struct Decoder<'a, S> {
     in_buf_limit: usize,
     out_buf: Vec<u8>,
     read_compressed: u64,
+    /// The error that left the decompression context out of step with this decoder. Every
+    /// decompression returns it again until the context is reset.
+    failure: Option<Failure>,
+}
+
+/// A decompression error after which the context's state no longer matches the decoder's.
+#[derive(Clone, Copy)]
+enum Failure {
+    Zstd(ErrorCode),
+    FrameSizeMismatch,
+}
+
+impl From<Failure> for Error {
+    fn from(failure: Failure) -> Self {
+        match failure {
+            Failure::Zstd(code) => code.into(),
+            Failure::FrameSizeMismatch => Error::frame_size_mismatch(),
+        }
+    }
+}
+
+/// Stores `failure` in `slot`, the decoder's `failure` field. Returns it as an error.
+fn record(slot: &mut Option<Failure>, failure: Failure) -> Error {
+    *slot = Some(failure);
+    failure.into()
 }
 
 impl<'a, S: Seekable> Decoder<'a, S> {
@@ -193,6 +218,7 @@ impl<'a, S: Seekable> Decoder<'a, S> {
             in_buf_limit: 0,
             out_buf: vec![0; DCtx::out_size()],
             read_compressed: 0,
+            failure: None,
         })
     }
 
@@ -211,13 +237,19 @@ impl<'a, S: Seekable> Decoder<'a, S> {
     /// # Errors
     ///
     /// If decompression fails, the source ends inside a frame, a frame disagrees with its seek
-    /// table entry, or any parameter is invalid.
+    /// table entry, or any parameter is invalid. After a failed decompression or disagreeing
+    /// frame, every call returns the same error until [`Self::reset`] or a [`Self::set_offset`]
+    /// that cannot continue from the current position. A failed read from the source is retried
+    /// by the next call instead.
     #[allow(clippy::missing_panics_doc)]
     pub fn decompress_with_prefix<'b: 'a>(
         &mut self,
         buf: &mut [u8],
         prefix: Option<&'b [u8]>,
     ) -> Result<usize> {
+        if let Some(failure) = self.failure {
+            return Err(failure.into());
+        }
         // An empty archive has nothing to read or produce
         if self.seek_table.num_frames() == 0 {
             return Ok(0);
@@ -290,12 +322,13 @@ impl<'a, S: Seekable> Decoder<'a, S> {
                 let (in_before, out_before) = (in_buffer.pos(), out_buffer.pos());
                 let n = self
                     .dctx
-                    .decompress_stream(&mut out_buffer, &mut in_buffer)?;
+                    .decompress_stream(&mut out_buffer, &mut in_buffer)
+                    .map_err(|code| record(&mut self.failure, Failure::Zstd(code)))?;
                 // Given input and room for output, zstd always makes progress. The only call
                 // made without room is the trailer drain, so a stall means the frame holds more
                 // data than its seek table entry says.
                 if in_buffer.pos() == in_before && out_buffer.pos() == out_before {
-                    return Err(Error::frame_size_mismatch());
+                    return Err(record(&mut self.failure, Failure::FrameSizeMismatch));
                 }
 
                 // Frame end
@@ -303,7 +336,7 @@ impl<'a, S: Seekable> Decoder<'a, S> {
                 if self.frame_done {
                     let end = self.decomp_pos + out_buffer.pos() as u64;
                     if frame_end != Some(end) {
-                        return Err(Error::frame_size_mismatch());
+                        return Err(record(&mut self.failure, Failure::FrameSizeMismatch));
                     }
                     self.frame_idx += 1;
                     frame_end = self.seek_table.frame_end_decomp(self.frame_idx).ok();
@@ -312,7 +345,9 @@ impl<'a, S: Seekable> Decoder<'a, S> {
                         self.dctx
                             .reset(ResetDirective::SessionOnly)
                             .expect("Resetting session never fails");
-                        self.dctx.ref_prefix(pref)?;
+                        self.dctx
+                            .ref_prefix(pref)
+                            .map_err(|code| record(&mut self.failure, Failure::Zstd(code)))?;
                     }
                 }
             }
@@ -421,6 +456,7 @@ impl<S: Seekable> Decoder<'_, S> {
     fn reset_dctx(&mut self) {
         self.read_compressed = 0;
         self.frame_done = true;
+        self.failure = None;
         self.dctx
             .reset(ResetDirective::SessionOnly)
             .expect("Resetting session never fails");

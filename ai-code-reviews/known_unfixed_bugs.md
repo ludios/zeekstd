@@ -12,9 +12,9 @@ When a fix lands, drop the `#[ignore]` from its test and delete the entry here.
 
 Fixed since the review and therefore not listed: 1, 2 and 8 (92c2102), 9 (7aaf00e), 13 (06f093f),
 3, 10, 15, 19 and the library half of 12 (2026-09-16), 7 (11b509a and 2026-09-16), the decoder
-arithmetic of 14 (92c2102), and 18 (zstd-safe 8, whose contexts keep returning an error until they
-are reset). The two repros Codex gave for 2 and 8 are kept as regression tests in
-`lib/tests/known_bugs.rs`.
+arithmetic of 14 (92c2102), and 18 (2026-10-17: the decoder keeps returning the error of a failed
+decompression or a disagreeing frame until it is reset). The two repros Codex gave for 2 and 8 are
+kept as regression tests in `lib/tests/known_bugs.rs`.
 
 ## Medium
 

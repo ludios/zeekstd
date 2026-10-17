@@ -13,6 +13,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   finishes a pending frame ending before it consumes more input. That input used to go into a zstd
   frame of its own that the seek table counted as part of the previous one, which made the archive
   undecodable
+- `Decoder` keeps returning the error of a failed decompression or of a frame that disagrees with
+  its seek table until `Decoder::reset` or a `Decoder::set_offset` backwards or into another frame.
+  Retrying after a disagreeing frame used to return bytes from elsewhere in the frame as if they
+  were the requested ones
 
 ## [7.0.0]
 

@@ -1,4 +1,5 @@
 // Model-output: Claude Fable 5.1
+// Model-output: Claude Opus 5.5
 //! Reproductions of the library findings in `ai-code-reviews/known_unfixed_bugs.md`.
 //!
 //! Each test asserts the behaviour the finding asks for. A test that is `#[ignore]`d still fails
@@ -322,6 +323,43 @@ fn decoder_keeps_failing_after_a_zstd_error() {
         assert!(
             result.is_err(),
             "call {attempt} after the error returned {result:?} instead of an error"
+        );
+    }
+}
+
+/// Finding 18: an error the decoder finds itself leaves its context just as far out of step with
+/// its position, so retrying must fail the same way instead of handing out bytes from elsewhere.
+#[test]
+fn decoder_keeps_failing_after_a_frame_size_mismatch() {
+    // Incompressible, so that the frame holds more than the seek table lets the decoder output
+    let mut state = 1_u32;
+    let content: Vec<u8> = (0..4000)
+        .map(|_| {
+            state = state.wrapping_mul(1_103_515_245).wrapping_add(12_345);
+            (state >> 24) as u8
+        })
+        .collect();
+    let archive = seekable(&[&content]);
+    let st = SeekTable::from_seekable(&mut BytesWrapper::new(&archive)).unwrap();
+    let mut forged = SeekTable::new();
+    forged
+        .log_frame(st.frame_size_comp(0).unwrap() as u32, 3000)
+        .unwrap();
+    let mut decoder = DecodeOptions::new(BytesWrapper::new(&archive))
+        .seek_table(forged)
+        .into_decoder()
+        .unwrap();
+    let mut buf = vec![0; 4096];
+    let first = decoder.decompress(&mut buf);
+    assert!(
+        matches!(&first, Err(err) if err.is_frame_size_mismatch()),
+        "{first:?}"
+    );
+    for attempt in 0..8 {
+        let result = decoder.decompress(&mut buf[..100]);
+        assert!(
+            matches!(&result, Err(err) if err.is_frame_size_mismatch()),
+            "call {attempt} after the mismatch returned {result:?}"
         );
     }
 }
