@@ -1,5 +1,6 @@
 // Model-output: Claude Fable 5.1
 // Model-output: Claude Opus 5
+// Model-output: Claude Opus 5.5
 use alloc::vec;
 use alloc::vec::Vec;
 use zstd_safe::{DCtx, InBuffer, OutBuffer, ResetDirective};
@@ -1037,11 +1038,12 @@ mod tests {
         let seekable = new_seekable(Some(FrameSizePolicy::Uncompressed(frame_size as u32)));
         let mut decoder = Decoder::new(BytesWrapper::new(&seekable)).unwrap();
 
-        // Decompress the last 4 frames
-        decoder.set_lower_frame(5).unwrap();
-        decoder.set_upper_frame(9).unwrap();
+        // Decompress the last 4 frames, of 9 or 10 depending on whether 9 divides the input
+        let last = decoder.seek_table().num_frames() - 1;
+        decoder.set_lower_frame(last - 3).unwrap();
+        decoder.set_upper_frame(last).unwrap();
 
-        let len = INPUT.len() - frame_size * 5;
+        let len = INPUT.len() - frame_size * (last - 3) as usize;
         let mut output = vec![0; len];
         let n = decoder.decompress(&mut output).unwrap();
         assert_eq!(n, len);
