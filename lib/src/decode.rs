@@ -127,6 +127,9 @@ pub struct Decoder<'a, S> {
     src: S,
     /// Index of the frame the decompression context is in, or about to enter.
     frame_idx: u32,
+    /// Whether the decompression context sits between frames, i.e. the last frame it saw was
+    /// consumed completely, trailer included.
+    frame_done: bool,
     decomp_pos: u64,
     offset: u64,
     offset_limit: u64,
@@ -160,6 +163,15 @@ impl From<Failure> for Error {
 fn record(slot: &mut Option<Failure>, failure: Failure) -> Error {
     *slot = Some(failure);
     failure.into()
+}
+
+/// Whether a decompression context that sits at decompressed position `pos` has to go on without
+/// room for output, to consume the frame ending at `frame_end` (`None` past the last frame): the
+/// trailer of the frame it is in, once that produced its last byte, or a whole empty frame, if it
+/// lies before `limit`, where the read ends. `frame_done` tells whether the context is between
+/// frames. An empty frame at the limit is left alone, like every frame past it.
+fn frame_pending(frame_done: bool, frame_end: Option<u64>, pos: u64, limit: u64) -> bool {
+    frame_end == Some(pos) && (!frame_done || pos < limit)
 }
 
 impl<'a, S: Seekable> Decoder<'a, S> {
@@ -206,6 +218,7 @@ impl<'a, S: Seekable> Decoder<'a, S> {
             seek_table,
             src: opts.src,
             frame_idx: 0,
+            frame_done: true,
             decomp_pos: 0,
             offset,
             offset_limit,
@@ -216,6 +229,19 @@ impl<'a, S: Seekable> Decoder<'a, S> {
             read_compressed: 0,
             failure: None,
         })
+    }
+
+    /// Reads from the source into the input buffer once that is used up. Fails if the read fails
+    /// or returns nothing, leaving the buffer used up, so that the next call reads again.
+    fn fill_in_buf(&mut self) -> Result<()> {
+        if self.in_buf_pos == self.in_buf_limit {
+            self.in_buf_limit = match self.src.read(&mut self.in_buf)? {
+                0 => return Err(Error::unexpected_eof()),
+                n => n,
+            };
+            self.in_buf_pos = 0;
+        }
+        Ok(())
     }
 
     /// Decompresses data from the internal source.
@@ -271,26 +297,26 @@ impl<'a, S: Seekable> Decoder<'a, S> {
         loop {
             // The output window below ends at the current frame's declared end at the latest, so
             // the context never gets past it
-            debug_assert!(frame_end.is_none_or(|end| self.decomp_pos <= end));
-            // Stop once no more output is wanted, unless the frame ends right here and still has
-            // to be consumed: its trailer, or all of it if it is empty
+            assert!(frame_end.is_none_or(|end| self.decomp_pos <= end));
+            // Stop once no more output is wanted, unless a frame still has to be consumed here
             let output_wanted = self.offset < self.offset_limit && output_progress < buf.len();
-            if !output_wanted && frame_end != Some(self.decomp_pos) {
+            let pending = frame_pending(
+                self.frame_done,
+                frame_end,
+                self.decomp_pos,
+                self.offset_limit,
+            );
+            if !output_wanted && !pending {
                 break;
             }
 
-            if self.in_buf_pos == self.in_buf_limit {
-                self.in_buf_limit = match self.src.read(&mut self.in_buf) {
-                    Ok(n) => n,
-                    // Bytes already placed in `buf` must be reported, so the failed read is left
-                    // for the next call, which retries it and reports its error
-                    Err(_) if output_progress > 0 => break,
-                    Err(err) => return Err(err),
-                };
-                self.in_buf_pos = 0;
-                if self.in_buf_limit == 0 {
-                    return Err(Error::unexpected_eof());
+            if let Err(err) = self.fill_in_buf() {
+                // Bytes already placed in `buf` must be reported, so a failed or empty read is
+                // left for the next call, which retries it and reports its error
+                if output_progress > 0 {
+                    break;
                 }
+                return Err(err);
             }
 
             let mut in_buffer = InBuffer::around(&self.in_buf[self.in_buf_pos..self.in_buf_limit]);
@@ -316,7 +342,9 @@ impl<'a, S: Seekable> Decoder<'a, S> {
             let in_len = self.in_buf_limit - self.in_buf_pos;
             while in_buffer.pos() < in_len {
                 let pos = self.decomp_pos + out_buffer.pos() as u64;
-                if out_buffer.pos() == out_buffer.capacity() && frame_end != Some(pos) {
+                if out_buffer.pos() == out_buffer.capacity()
+                    && !frame_pending(self.frame_done, frame_end, pos, self.offset_limit)
+                {
                     break;
                 }
 
@@ -333,7 +361,8 @@ impl<'a, S: Seekable> Decoder<'a, S> {
                 }
 
                 // Frame end
-                if n == 0 {
+                self.frame_done = n == 0;
+                if self.frame_done {
                     let end = self.decomp_pos + out_buffer.pos() as u64;
                     if frame_end != Some(end) {
                         return Err(record(&mut self.failure, Failure::FrameSizeMismatch));
@@ -351,6 +380,8 @@ impl<'a, S: Seekable> Decoder<'a, S> {
                     }
                 }
             }
+            // Every pass runs the context at least once, and that either advances or fails above
+            assert!(in_buffer.pos() > 0 || out_buffer.pos() > 0);
 
             self.decomp_pos += out_buffer.pos() as u64;
             self.in_buf_pos += in_buffer.pos();
@@ -448,6 +479,7 @@ impl<S: Seekable> Decoder<'_, S> {
 
     fn reset_dctx(&mut self) {
         self.read_compressed = 0;
+        self.frame_done = true;
         self.failure = None;
         self.dctx
             .reset(ResetDirective::SessionOnly)
@@ -1017,6 +1049,102 @@ mod tests {
             "{:?}",
             result.as_ref().map(Vec::len)
         );
+    }
+
+    /// Compresses each of `pieces` into a frame of its own, checksums on, an empty piece into an
+    /// empty frame. Returns the frames, without a seek table, and their seek table.
+    fn frames(pieces: &[&[u8]]) -> (Vec<u8>, SeekTable) {
+        let mut encoder = EncodeOptions::new()
+            .checksum_flag(true)
+            .into_raw_encoder()
+            .unwrap();
+        let mut archive = vec![];
+        let mut buf = vec![0; 4096];
+        for piece in pieces {
+            let mut pos = 0;
+            while pos < piece.len() {
+                let prog = encoder.compress(&piece[pos..], &mut buf).unwrap();
+                archive.extend(&buf[..prog.out_progress()]);
+                pos += prog.in_progress();
+            }
+            loop {
+                let prog = encoder.end_frame(&mut buf).unwrap();
+                archive.extend(&buf[..prog.out_progress()]);
+                if prog.data_left() == 0 {
+                    break;
+                }
+            }
+        }
+        (archive, encoder.into_seek_table())
+    }
+
+    /// A decoder over `src` with `st` as its seek table.
+    fn decoder_with<'a>(src: &'a [u8], st: &SeekTable) -> Decoder<'static, BytesWrapper<'a>> {
+        DecodeOptions::new(BytesWrapper::new(src))
+            .seek_table(st.clone())
+            .into_decoder()
+            .unwrap()
+    }
+
+    #[test]
+    fn upper_frame_does_not_enter_a_following_empty_frame() {
+        let data = noise(1000);
+        let (archive, st) = frames(&[&data, b""]);
+        assert_eq!(st.frame_size_decomp(1).unwrap(), 0);
+
+        // A source holding only frame 0, as a range fetch of just the frame asked for: the read
+        // must end with frame 0 and not reach into the empty frame 1 past it
+        let frame0_end = st.frame_end_comp(0).unwrap();
+        let mut decoder = decoder_with(&archive[..frame0_end as usize], &st);
+        decoder.set_upper_frame(0).unwrap();
+        assert_eq!(decode_all(&mut decoder, 4096).unwrap(), data);
+        assert_eq!(decoder.read_compressed(), frame0_end);
+    }
+
+    #[test]
+    fn empty_frame_inside_the_range_is_consumed_and_verified() {
+        let data = noise(2000);
+        let (mut archive, st) = frames(&[&data[..1000], b"", &data[1000..]]);
+        assert_eq!(st.num_frames(), 3);
+
+        // Whether or not the output buffer fills up right at the empty frame, a whole read
+        // passes through it and ends with every frame consumed
+        for chunk in [1000, 4096] {
+            let mut decoder = decoder_with(&archive, &st);
+            assert_eq!(decode_all(&mut decoder, chunk).unwrap(), data);
+            assert_eq!(decoder.read_compressed(), st.size_comp());
+        }
+
+        // The empty frame's checksum is checked like any other
+        archive[st.frame_end_comp(1).unwrap() as usize - 1] ^= 1;
+        let mut decoder = decoder_with(&archive, &st);
+        assert_checksum_error(
+            decode_all(&mut decoder, 4096),
+            "empty frame inside the range",
+        );
+    }
+
+    #[test]
+    fn source_ending_after_reported_bytes_fails_on_the_next_call() {
+        let data = noise(2000);
+        let (archive, st) = frames(&[&data[..1000], &data[1000..]]);
+        let frame0_end = st.frame_end_comp(0).unwrap() as usize;
+
+        // The source ends right after frame 0, or inside frame 1
+        for cut in [frame0_end, frame0_end + 10] {
+            let mut decoder = decoder_with(&archive[..cut], &st);
+            let mut buf = vec![0; 4096];
+            // Frame 0 fits the buffer, so its bytes, and what the source holds of frame 1, are
+            // reported before the source's end is
+            let n = decoder.decompress(&mut buf).unwrap();
+            assert!(n >= 1000, "{n}");
+            assert_eq!(buf[..n], data[..n]);
+            let result = decoder.decompress(&mut buf);
+            assert!(
+                result.as_ref().is_err_and(Error::is_unexpected_eof),
+                "{result:?}"
+            );
+        }
     }
 
     #[test]

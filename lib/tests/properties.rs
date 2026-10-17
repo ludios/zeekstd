@@ -1,3 +1,5 @@
+// Model-output: Claude Fable 5.1
+// Model-output: Claude Opus 4.8
 // Model-output: Claude Opus 5.5
 //! Property tests of the public API.
 //!
@@ -776,7 +778,8 @@ fn forge(archive: &Archive, changes: &[EntryChange]) -> SeekTable {
 /// before it may have moved where frames start, onto another frame. So it must have decoded the
 /// frames from the one that really starts where `forged` says its frame does, each as large as
 /// `forged` says, and return their content from as far into the first as `offset` lies by
-/// `forged`.
+/// `forged`. Frames `forged` declares empty before the first or after the last with content are
+/// never entered, so they go unchecked.
 fn check_forged_read(
     archive: &Archive,
     forged: SeekTable,
@@ -788,10 +791,14 @@ fn check_forged_read(
     let true_frame = (0..st.num_frames()).find(|&i| st.frame_start_comp(i).unwrap() == c_start);
     let into_frame = offset - forged.frame_start_decomp(frame).unwrap();
     let len = (forged.size_decomp() - offset) as usize;
-    let num_frames = forged.num_frames();
-    let forged_sizes: Vec<u64> = (frame..num_frames)
-        .map(|i| forged.frame_size_decomp(i).unwrap())
-        .collect();
+    let last = (frame..forged.num_frames())
+        .rev()
+        .find(|&i| forged.frame_size_decomp(i).unwrap() > 0);
+    let forged_sizes: Vec<u64> = last.map_or(vec![], |last| {
+        (frame..=last)
+            .map(|i| forged.frame_size_decomp(i).unwrap())
+            .collect()
+    });
 
     let result = DecodeOptions::new(BytesWrapper::new(&archive.frames))
         .seek_table(forged)
@@ -928,6 +935,21 @@ fn format() -> impl Strategy<Value = Format> {
     prop_oneof![Just(Format::Head), Just(Format::Foot)]
 }
 
+/// What a whole read of `archive` through `table`, its seek table with entries changed, returns
+/// when it succeeds: the content of the frames from the first to the last that `table` gives a
+/// size. The decoder never enters a frame declared empty at either end of a read, so an entry
+/// zeroed by damage leaves its frame out unnoticed.
+fn content_of_sized_frames<'a>(archive: &'a Archive, table: &SeekTable) -> &'a [u8] {
+    let sized = || (0..table.num_frames()).filter(|&i| table.frame_size_decomp(i).unwrap() > 0);
+    let (Some(first), Some(last)) = (sized().next(), sized().last()) else {
+        return &[];
+    };
+    let st = &archive.seek_table;
+    let start = st.frame_start_decomp(first).unwrap() as usize;
+    let end = st.frame_end_decomp(last).unwrap() as usize;
+    &archive.input[start..end]
+}
+
 proptest! {
     /// The frames are zstd frames of what the seek table says, with checksums if asked for, and
     /// as large as the frame size policy wants them.
@@ -1028,7 +1050,13 @@ proptest! {
             .into_decoder()
             .and_then(|mut decoder| decode_all(&mut decoder, buf_len, prefix));
         if let Ok(decoded) = result {
-            prop_assert!(decoded == archive.input[offset..], "{:?} accepted", damage);
+            let expected = if to_seek_table {
+                let damaged = SeekTable::from_seekable(&mut BytesWrapper::new(&bytes)).unwrap();
+                content_of_sized_frames(&archive, &damaged)
+            } else {
+                &archive.input[offset..]
+            };
+            prop_assert!(decoded == expected, "{:?} accepted", damage);
         }
     }
 

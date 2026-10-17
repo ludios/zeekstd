@@ -27,6 +27,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   entry's end. It used to decompress on into what the table declares to be the following frames, so
   a read that ended there returned the frame's surplus as their content without an error: one
   flipped bit in the size of the next-to-last frame cut a whole-archive read short, checksums or not
+- `Decoder::decompress` returns the bytes it placed in the buffer before the source ended, and the
+  unexpected-EOF error on the call after, as it does for a failed read. It used to return the error
+  right away and leave the bytes unreported
 
 ## [7.0.0]
 
