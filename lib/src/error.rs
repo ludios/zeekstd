@@ -1,5 +1,6 @@
 // Model-output: Claude Fable 5.1
 // Model-output: Claude Opus 5
+// Model-output: Claude Mythos 5.1
 use zstd_safe::{ErrorCode, get_error_name, zstd_sys::ZSTD_ErrorCode};
 
 /// A `Result` alias where the `Err` case is `zeekstd::Error`.
@@ -73,6 +74,18 @@ impl Error {
         matches!(self.kind, Kind::FrameSizeMismatch)
     }
 
+    pub(crate) fn seek_table_position_mismatch() -> Self {
+        Self {
+            kind: Kind::SeekTablePositionMismatch,
+        }
+    }
+
+    /// Returns true if the frames' compressed sizes do not add up to the position of the seek
+    /// table that lists them.
+    pub fn is_seek_table_position_mismatch(&self) -> bool {
+        matches!(self.kind, Kind::SeekTablePositionMismatch)
+    }
+
     pub(crate) fn zstd(code: ZSTD_ErrorCode) -> Self {
         let wrapped = 0_usize.wrapping_sub(code as usize);
         Self {
@@ -103,6 +116,9 @@ impl core::fmt::Display for Error {
             Kind::UnexpectedEof => f.write_str("seekable source ended inside a frame"),
             Kind::FrameSizeMismatch => {
                 f.write_str("frame's size differs from its seek table entry")
+            }
+            Kind::SeekTablePositionMismatch => {
+                f.write_str("frames' compressed sizes do not add up to the seek table's position")
             }
             #[cfg(feature = "std")]
             Kind::IO(err) => write!(f, "io error: {err}"),
@@ -167,6 +183,8 @@ enum Kind {
     UnexpectedEof,
     /// A frame's decompressed or compressed size differs from its seek table entry.
     FrameSizeMismatch,
+    /// The frames' compressed sizes do not add up to the position of the seek table.
+    SeekTablePositionMismatch,
     /// IO error.
     #[cfg(feature = "std")]
     IO(std::io::Error),
@@ -185,6 +203,7 @@ impl core::fmt::Debug for Kind {
             Self::InvalidFrameSizePolicy => write!(f, "InvalidFrameSizePolicy"),
             Self::UnexpectedEof => write!(f, "UnexpectedEof"),
             Self::FrameSizeMismatch => write!(f, "FrameSizeMismatch"),
+            Self::SeekTablePositionMismatch => write!(f, "SeekTablePositionMismatch"),
             #[cfg(feature = "std")]
             Self::IO(arg0) => f.debug_tuple("IO").field(arg0).finish(),
             Self::Zstd(c) => write!(f, "{}; code {}", zstd_safe::get_error_name(*c), c),
