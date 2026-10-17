@@ -75,9 +75,10 @@ The `Error` struct has changed:
 
 - zstd-safe was updated from 7 to 8. `EncodeOptions` and `DecodeOptions` now take the zstd-safe 8
   `CCtx` and `DCtx`, so callers that pass their own contexts must use zstd-safe 8 as well.
-  A context that reported an error now returns it from every later call until it is reset, by
-  `Decoder::reset` or a `Decoder::set_offset` backwards or into another frame, or by
-  `RawEncoder::reset_frame`
+  A context that zstd reported an error for now returns it from every later call until it is
+  reset, by `Decoder::reset` or a `Decoder::set_offset` backwards or into another frame, or by
+  `RawEncoder::reset_frame`. zstd-safe and zstd-sys are now licensed BSD-3-Clause instead of MIT
+  or Apache-2.0
 
 ## [0.6.2]
 
