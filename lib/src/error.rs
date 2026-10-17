@@ -67,7 +67,8 @@ impl Error {
         }
     }
 
-    /// Returns true if a frame's decompressed size differs from its seek table entry.
+    /// Returns true if a frame's decompressed or compressed size differs from its seek table
+    /// entry.
     pub fn is_frame_size_mismatch(&self) -> bool {
         matches!(self.kind, Kind::FrameSizeMismatch)
     }
@@ -101,7 +102,7 @@ impl core::fmt::Display for Error {
             Kind::InvalidFrameSizePolicy => f.write_str("invalid frame size policy"),
             Kind::UnexpectedEof => f.write_str("seekable source ended inside a frame"),
             Kind::FrameSizeMismatch => {
-                f.write_str("frame's decompressed size differs from its seek table entry")
+                f.write_str("frame's size differs from its seek table entry")
             }
             #[cfg(feature = "std")]
             Kind::IO(err) => write!(f, "io error: {err}"),
@@ -164,7 +165,7 @@ enum Kind {
     InvalidFrameSizePolicy,
     /// The seekable source ended inside a frame.
     UnexpectedEof,
-    /// A frame's decompressed size differs from its seek table entry.
+    /// A frame's decompressed or compressed size differs from its seek table entry.
     FrameSizeMismatch,
     /// IO error.
     #[cfg(feature = "std")]

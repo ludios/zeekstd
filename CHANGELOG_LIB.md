@@ -33,6 +33,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   trailer of the frame the last bytes came from, the call fails and takes them back instead, so
   that a retry produces them again; it used to return them, and a caller reading a known length
   never saw the error
+- `Decoder` rejects a frame whose compressed size differs from its seek table entry once it reaches
+  the frame's end, as it does for the decompressed size. A changed compressed-size entry used to
+  pass a whole read unnoticed, and a seek that it sent onto another frame of the same decompressed
+  size returned that frame's content as the requested one
 
 ## [7.0.0]
 

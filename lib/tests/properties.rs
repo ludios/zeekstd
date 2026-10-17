@@ -767,9 +767,9 @@ fn forge(archive: &Archive, changes: &[EntryChange]) -> SeekTable {
 /// either fails or returns what is really there. The decoder verifies each frame it decodes
 /// against `forged`, but not that the frame it seeks to is the one `forged` means: an entry
 /// before it may have moved where frames start, onto another frame. So it must have decoded the
-/// frames from the one that really starts where `forged` says its frame does, each as large as
-/// `forged` says, and return their content from as far into the first as `offset` lies by
-/// `forged`. Frames `forged` declares empty before the first or after the last with content are
+/// frames from the one that really starts where `forged` says its frame does, each of the sizes
+/// `forged` gives it, compressed and decompressed, and return their content from as far into the
+/// first as `offset` lies by `forged`. Frames `forged` declares empty before the first or after the last with content are
 /// never entered, so they go unchecked.
 fn check_forged_read(
     archive: &Archive,
@@ -785,10 +785,12 @@ fn check_forged_read(
     let last = (frame..forged.num_frames())
         .rev()
         .find(|&i| forged.frame_size_decomp(i).unwrap() > 0);
-    let forged_sizes: Vec<u64> = last.map_or(vec![], |last| {
-        (frame..=last)
-            .map(|i| forged.frame_size_decomp(i).unwrap())
-            .collect()
+    let sizes_of = |table: &SeekTable, i: u32| {
+        let c_size = table.frame_size_comp(i).unwrap_or(u64::MAX);
+        (c_size, table.frame_size_decomp(i).unwrap_or(u64::MAX))
+    };
+    let forged_sizes: Vec<(u64, u64)> = last.map_or(vec![], |last| {
+        (frame..=last).map(|i| sizes_of(&forged, i)).collect()
     });
 
     let result = DecodeOptions::new(BytesWrapper::new(&archive.frames))
@@ -812,9 +814,9 @@ fn check_forged_read(
             c_start
         )));
     };
-    let true_sizes: Vec<u64> = (true_frame..)
+    let true_sizes: Vec<(u64, u64)> = (true_frame..)
         .take(forged_sizes.len())
-        .map(|i| st.frame_size_decomp(i).unwrap_or(u64::MAX))
+        .map(|i| sizes_of(st, i))
         .collect();
     prop_assert_eq!(
         &true_sizes,

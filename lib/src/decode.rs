@@ -138,6 +138,8 @@ pub struct Decoder<'a, S> {
     in_buf_limit: usize,
     out_buf: Vec<u8>,
     read_compressed: u64,
+    /// Position in the compressed data at which the reads since the last reset began.
+    comp_start: u64,
     /// The error that left the decompression context out of step with this decoder. Every
     /// decompression returns it again until the context is reset.
     failure: Option<Failure>,
@@ -172,6 +174,13 @@ fn record(slot: &mut Option<Failure>, failure: Failure) -> Error {
 /// frames. An empty frame at the limit is left alone, like every frame past it.
 fn frame_pending(frame_done: bool, frame_end: Option<u64>, pos: u64, limit: u64) -> bool {
     frame_end == Some(pos) && (!frame_done || pos < limit)
+}
+
+/// Whether a frame that ends at `end` in the decompressed data and at `comp_end` in the
+/// compressed data ends where the entry of frame `index` in `seek_table` puts it.
+fn ends_as_listed(seek_table: &SeekTable, index: u32, end: u64, comp_end: u64) -> bool {
+    seek_table.frame_end_decomp(index).ok() == Some(end)
+        && seek_table.frame_end_comp(index).ok() == Some(comp_end)
 }
 
 impl<'a, S: Seekable> Decoder<'a, S> {
@@ -227,6 +236,7 @@ impl<'a, S: Seekable> Decoder<'a, S> {
             in_buf_limit: 0,
             out_buf: vec![0; DCtx::out_size()],
             read_compressed: 0,
+            comp_start: 0,
             failure: None,
         })
     }
@@ -250,7 +260,7 @@ impl<'a, S: Seekable> Decoder<'a, S> {
     /// written to `buf`. Decompression is finished when no more bytes are written to `buf`.
     ///
     /// Every frame that gets decompressed to its end is verified, i.e. its checksum if it has
-    /// one, and its decompressed size against the seek table. An offset limit inside a frame
+    /// one, and its decompressed and compressed sizes against the seek table. An offset limit inside a frame
     /// skips the verification of that frame. A frame that the seek table declares empty is read
     /// and verified only between other frames of the read, not at its offset or at its limit.
     ///
@@ -285,6 +295,7 @@ impl<'a, S: Seekable> Decoder<'a, S> {
             self.frame_idx = self.seek_table.frame_index_decomp(self.offset);
             let start_pos = self.seek_table.frame_start_comp(self.frame_idx)?;
             self.src.set_offset(OffsetFrom::Start(start_pos))?;
+            self.comp_start = start_pos;
             self.decomp_pos = self.seek_table.frame_start_decomp(self.frame_idx)?;
             // Reference prefix at the beginning of decompression
             if let Some(pref) = prefix {
@@ -366,11 +377,13 @@ impl<'a, S: Seekable> Decoder<'a, S> {
                     return Err(record(&mut self.failure, Failure::FrameSizeMismatch));
                 }
 
-                // Frame end
+                // Frame end: it must be where the frame's seek table entry puts it, in the
+                // decompressed data and in the compressed data
                 self.frame_done = n == 0;
                 if self.frame_done {
                     let end = self.decomp_pos + out_buffer.pos() as u64;
-                    if frame_end != Some(end) {
+                    let comp_end = self.comp_start + self.read_compressed + in_buffer.pos() as u64;
+                    if !ends_as_listed(&self.seek_table, self.frame_idx, end, comp_end) {
                         return Err(record(&mut self.failure, Failure::FrameSizeMismatch));
                     }
                     self.frame_idx += 1;
@@ -1139,6 +1152,26 @@ mod tests {
                 "{result:?}"
             );
         }
+    }
+
+    #[test]
+    fn frame_with_a_wrong_compressed_size_entry_is_rejected() {
+        let data = noise(2000);
+        let (archive, st) = frames(&[&data[..1000], &data[1000..]], None, true);
+        let c_size = |i: u32| st.frame_size_comp(i).unwrap() as u32;
+        // Frame 0's entry a byte short and frame 1's a byte long, so that the frames still add
+        // up to what the table says they do
+        let mut wrong = SeekTable::new();
+        wrong.log_frame(c_size(0) - 1, 1000).unwrap();
+        wrong.log_frame(c_size(1) + 1, 1000).unwrap();
+        // A whole read gets to frame 0's end a byte after where its entry puts it
+        let mut decoder = decoder_with(&archive, &wrong);
+        let result = decode_all(&mut decoder, 4096);
+        assert!(
+            result.as_ref().is_err_and(Error::is_frame_size_mismatch),
+            "{:?}",
+            result.as_ref().map(Vec::len)
+        );
     }
 
     #[test]
