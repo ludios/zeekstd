@@ -4,7 +4,7 @@ Findings from the Codex review of 6038504 (`astra.md` in this directory, numberi
 still open in the library at 977fc5c, checked on 2026-09-16. CLI-only findings, 4, 5, 6, 16, 17 and
 20 plus the CLI half of 12, are left out on purpose. Every entry has a test that asserts the wanted
 behaviour. Tests that fail today are marked `#[ignore]`; that of 14 passes here for the reason
-given in its entry.
+given in its entry. Entry 21 came later, from the property tests.
 
 - `lib/tests/known_bugs.rs`: `cargo test -p zeekstd --test known_bugs -- --ignored`
 
@@ -35,6 +35,24 @@ installed here, so this rests on code reading. `oversized_skippable_header_is_re
 64-bit and would catch it on a 32-bit CI job.
 
 Fix: `checked_add`, or compare in `u64`.
+
+### 21. A frame declared empty at either end of a read is never checked
+
+Found by the property tests on 2026-10-17. The decoder reads a frame whose seek table entry says it
+is empty only between other frames of a read: `frame_index_decomp` skips such frames at the read's
+start, and the decoder stops before one at its limit, so that a read bounded by `upper_frame` over
+a source holding only the requested frames does not reach past them. A size entry zeroed by
+corruption therefore drops its frame from a whole read without an error when it is the first or
+the last frame, and the default frame size of 2 MiB is one flipped bit from zero. An empty archive,
+one empty frame, is never read at all. Frames declared empty between others are read and verified,
+and a wrong entry of any other value is caught at the frame's end.
+
+Decision (2026-10-17): kept, as a positional range cannot tell "through frame k" from "through the
+archive's end" when empty frames share the position. The fix would bound reads by frame index, so
+that a whole read also checks the frames at its ends, while `set_offset` at a frame boundary would
+verify the empty frames there too, which byte-range fetches would have to include.
+
+Test: `zeroed_size_entry_at_either_end_is_noticed`.
 
 ## Nits still present
 

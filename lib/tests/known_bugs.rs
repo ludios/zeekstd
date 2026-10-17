@@ -418,6 +418,27 @@ fn seek_with_wrong_compressed_sizes_fails() {
     assert!(result.is_err());
 }
 
+/// Finding 21: a size entry zeroed by damage leaves its frame out of a whole read without an
+/// error when the frame is the first or the last, as the decoder reads a frame declared empty
+/// only between other frames of a read.
+#[test]
+#[ignore = "known unfixed by decision: a read passes over frames declared empty at its ends"]
+fn zeroed_size_entry_at_either_end_is_noticed() {
+    let archive = seekable(&[b"abc", b"XYZ"]);
+    let st = SeekTable::from_seekable(&mut BytesWrapper::new(&archive)).unwrap();
+    for zeroed in 0..2 {
+        let mut forged = SeekTable::new();
+        for i in 0..2 {
+            let d_size = if i == zeroed { 0 } else { 3 };
+            forged
+                .log_frame(st.frame_size_comp(i).unwrap() as u32, d_size)
+                .unwrap();
+        }
+        let result = read_with_table(&archive, forged, 0);
+        assert!(result.is_err(), "frame {zeroed} zeroed: {result:?}");
+    }
+}
+
 /// Finding 13, regression: both zero frame-size policies are rejected at construction.
 #[test]
 fn zero_frame_size_policies_are_rejected() {
