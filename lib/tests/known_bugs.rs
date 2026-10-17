@@ -8,12 +8,15 @@
 //! attribute guard findings that are only reachable on other targets, or that were fixed.
 #![cfg(feature = "std")]
 
+mod common;
+
 use std::{
     alloc::{GlobalAlloc, Layout, System},
     cell::Cell,
-    io::{self, Cursor, Read, Seek, SeekFrom, Write},
+    io::{Cursor, Write},
 };
 
+use common::{Chunked, decode_all, serialize};
 use zeekstd::{
     BytesWrapper, DecodeOptions, Decoder, EncodeOptions, Encoder, FrameSizePolicy, SeekTable,
     seek_table::Format,
@@ -60,42 +63,11 @@ unsafe impl GlobalAlloc for PeakAlloc {
 #[global_allocator]
 static GLOBAL: PeakAlloc = PeakAlloc;
 
-/// A `Read + Seek` source that hands out at most `chunk` bytes per read.
-struct Chunked<'a> {
-    inner: Cursor<&'a [u8]>,
-    chunk: usize,
-}
-
-impl<'a> Chunked<'a> {
-    fn new(bytes: &'a [u8], chunk: usize) -> Self {
-        Self {
-            inner: Cursor::new(bytes),
-            chunk,
-        }
-    }
-}
-
-impl Read for Chunked<'_> {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let len = buf.len().min(self.chunk);
-        self.inner.read(&mut buf[..len])
-    }
-}
-
-impl Seek for Chunked<'_> {
-    fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
-        self.inner.seek(pos)
-    }
-}
-
 /// Serializes a seek table whose only frame has the sizes `(c_size, d_size)` in `format`.
 fn one_frame_table(c_size: u32, d_size: u32, format: Format) -> Vec<u8> {
     let mut st = SeekTable::new();
     st.log_frame(c_size, d_size).unwrap();
-    let mut ser = st.into_format_serializer(format);
-    let mut buf = vec![0; ser.encoded_len()];
-    assert_eq!(ser.write_into(&mut buf), buf.len());
-    buf
+    serialize(&st, format)
 }
 
 /// A `Foot` seek table frame declaring `num_frames` frames but carrying no entries. With
@@ -135,22 +107,6 @@ fn seekable(frames: &[&[u8]]) -> Vec<u8> {
     }
     encoder.finish().unwrap();
     out
-}
-
-/// Decompresses everything from `decoder` in `buf_len`-byte steps.
-fn read_all<S: zeekstd::Seekable>(
-    decoder: &mut Decoder<'_, S>,
-    buf_len: usize,
-) -> zeekstd::Result<Vec<u8>> {
-    let mut out = Vec::new();
-    let mut buf = vec![0; buf_len];
-    loop {
-        let n = decoder.decompress(&mut buf)?;
-        if n == 0 {
-            return Ok(out);
-        }
-        out.extend(&buf[..n]);
-    }
 }
 
 /// Builds a legacy (spec 0.1.0) archive with the reference compressor: one frame of `content`,
@@ -249,7 +205,7 @@ fn corrupted_legacy_table_checksum_is_rejected() {
     );
 
     let mut decoder = Decoder::new(BytesWrapper::new(&archive)).unwrap();
-    assert!(read_all(&mut decoder, 64).is_err());
+    assert!(decode_all(&mut decoder, 64, None).is_err());
 }
 
 /// Finding 12: an archive with zero frames is valid and decodes to nothing.
@@ -267,7 +223,7 @@ fn zero_frame_archive_decodes_to_nothing() {
     let st = SeekTable::from_seekable(&mut BytesWrapper::new(&archive)).unwrap();
     assert_eq!(st.num_frames(), 0);
     let mut decoder = Decoder::new(BytesWrapper::new(&archive)).unwrap();
-    assert_eq!(read_all(&mut decoder, 64).unwrap(), b"");
+    assert_eq!(decode_all(&mut decoder, 64, None).unwrap(), b"");
 }
 
 /// Finding 12: frame lookups on an empty table must not underflow.
@@ -390,7 +346,7 @@ fn read_with_table(archive: &[u8], table: SeekTable, offset: u64) -> zeekstd::Re
         .seek_table(table)
         .offset(offset)
         .into_decoder()?;
-    read_all(&mut decoder, 64)
+    decode_all(&mut decoder, 64, None)
 }
 
 /// Finding 2, regression: a table that declares one byte less than the frame holds is rejected
@@ -454,7 +410,7 @@ fn seek_with_wrong_compressed_sizes_fails() {
         .lower_frame(1)
         .into_decoder()
         .unwrap();
-    let result = read_all(&mut decoder, 64);
+    let result = decode_all(&mut decoder, 64, None);
     assert!(
         !matches!(&result, Ok(out) if out != b"XYZ"),
         "seek returned {result:?}, neither the right frame nor an error"

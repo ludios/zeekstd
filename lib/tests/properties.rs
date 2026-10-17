@@ -9,13 +9,16 @@
 //! never pass for content.
 #![cfg(feature = "std")]
 
+mod common;
+
 use std::{
     cell::RefCell,
-    io::{self, Cursor, Read, Seek, SeekFrom, Write},
+    io::{self, Seek, SeekFrom, Write},
     ops::Range,
     rc::Rc,
 };
 
+use common::{Chunked, decode_all, serialize};
 use proptest::{prelude::*, sample::Index};
 use zeekstd::{
     BytesWrapper, DecodeOptions, Decoder, EncodeOptions, EpilogueProgress, FrameSizePolicy,
@@ -55,6 +58,8 @@ enum Step {
     EndFrame { out: usize, once: bool },
 }
 
+/// Up to 16 encoder calls, three in four compressing up to 3000 bytes through buffers of up to
+/// 255 bytes, the rest flushes and frame endings through buffers of up to 31 bytes.
 fn steps() -> impl Strategy<Value = Vec<Step>> {
     let epilogue = || (1..32usize, any::<bool>());
     let step = prop_oneof![
@@ -141,6 +146,10 @@ impl<'a> Session<'a> {
         let mut buf = vec![0; out];
         loop {
             let progress = epilogue(&mut self.encoder, &mut buf).unwrap();
+            assert!(
+                progress.out_progress() > 0 || progress.data_left() == 0,
+                "epilogue stalled"
+            );
             self.frames.extend(&buf[..progress.out_progress()]);
             if once || progress.data_left() == 0 {
                 return;
@@ -230,21 +239,14 @@ fn archive_with(
     )
 }
 
-/// Archives with or without checksums, one in four with a prefix.
-fn archive() -> impl Strategy<Value = Archive> {
-    archive_with(any::<bool>(), sometimes_a_prefix())
-}
-
+/// A prefix of `content()` one time in four, else none.
 fn sometimes_a_prefix() -> impl Strategy<Value = Option<Vec<u8>>> {
     prop::option::weighted(0.25, content())
 }
 
-/// `seek_table` serialized in `format`.
-fn serialize(seek_table: &SeekTable, format: Format) -> Vec<u8> {
-    let mut ser = seek_table.clone().into_format_serializer(format);
-    let mut bytes = vec![0; ser.encoded_len()];
-    assert_eq!(ser.write_into(&mut bytes), bytes.len());
-    bytes
+/// Archives with or without checksums, one in four with a prefix.
+fn archive() -> impl Strategy<Value = Archive> {
+    archive_with(any::<bool>(), sometimes_a_prefix())
 }
 
 /// Everything zstd decodes from `bytes`, which may end inside a frame. The first frame
@@ -269,57 +271,9 @@ fn zstd_stream_decode(bytes: &[u8], prefix: Option<&[u8]>) -> Vec<u8> {
     }
 }
 
-/// A `Read + Seek` source that returns at most `chunk` bytes per read.
-struct Chunked<'a> {
-    inner: Cursor<&'a [u8]>,
-    chunk: usize,
-}
-
-impl<'a> Chunked<'a> {
-    fn new(bytes: &'a [u8], chunk: usize) -> Self {
-        Self {
-            inner: Cursor::new(bytes),
-            chunk,
-        }
-    }
-}
-
-impl Read for Chunked<'_> {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let len = buf.len().min(self.chunk);
-        self.inner.read(&mut buf[..len])
-    }
-}
-
-impl Seek for Chunked<'_> {
-    fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
-        self.inner.seek(pos)
-    }
-}
-
 /// Read sizes from a byte at a time to more than the decoder's input buffer holds.
 fn chunk() -> impl Strategy<Value = usize> {
     prop_oneof![1..64usize, 1..200_000usize]
-}
-
-/// Decompresses from `decoder` in `buf_len`-byte steps until it reports the end, referencing
-/// `prefix` at every frame. Panics if the decoder produces more than its seek table holds, so
-/// that one that never reports the end cannot hang the test.
-fn decode_all<'a, S: zeekstd::Seekable>(
-    decoder: &mut Decoder<'a, S>,
-    buf_len: usize,
-    prefix: Option<&'a [u8]>,
-) -> zeekstd::Result<Vec<u8>> {
-    let mut output = vec![];
-    let mut buf = vec![0; buf_len];
-    loop {
-        let n = decoder.decompress_with_prefix(&mut buf, prefix)?;
-        if n == 0 {
-            return Ok(output);
-        }
-        output.extend(&buf[..n]);
-        assert!(output.len() as u64 <= decoder.seek_table().size_decomp());
-    }
 }
 
 /// Where the decoder under test gets its seek table.
@@ -331,6 +285,7 @@ enum TableSource {
     Detached { format: Format, chunk: usize },
 }
 
+/// The archive's own table, or a detached one in either format read in chunks.
 fn table_source() -> impl Strategy<Value = TableSource> {
     prop_oneof![
         Just(TableSource::Archive),
@@ -339,8 +294,13 @@ fn table_source() -> impl Strategy<Value = TableSource> {
     ]
 }
 
-/// What `DecodeOptions` set the decoder up with. Positions and frames pick from up to one past
-/// the valid range, so that an option is out of range now and then.
+/// `index` mapped to 0 up to `end + 1`: past the last valid position for a size `end`, and past
+/// the last valid index by two for a frame count, so that a pick is out of range now and then.
+fn pick(index: Index, end: u64) -> u64 {
+    index.index(end as usize + 2) as u64
+}
+
+/// What `DecodeOptions` set the decoder up with. Positions and frames come from `pick`.
 #[derive(Clone, Debug)]
 struct Start {
     offset: Option<Index>,
@@ -349,6 +309,7 @@ struct Start {
     upper_frame: Option<Index>,
 }
 
+/// Each option set one time in five.
 fn start() -> impl Strategy<Value = Start> {
     let option = || prop::option::weighted(0.2, any::<Index>());
     (option(), option(), option(), option()).prop_map(
@@ -362,40 +323,46 @@ fn start() -> impl Strategy<Value = Start> {
 }
 
 impl Start {
-    /// Sets these options on `opts` for a decoder over the frames of `st`. Returns `opts` with
-    /// the position and limit they give the decoder, `None` if an option is out of range. A frame
-    /// overrides a position.
-    fn apply<'a, S>(
-        &self,
-        mut opts: DecodeOptions<'a, S>,
-        st: &SeekTable,
-    ) -> (DecodeOptions<'a, S>, Option<(u64, u64)>) {
+    /// Sets these options on `opts`, for a decoder over the frames of `st`.
+    fn apply<'a, S>(&self, mut opts: DecodeOptions<'a, S>, st: &SeekTable) -> DecodeOptions<'a, S> {
+        let size = st.size_decomp();
+        let num_frames = u64::from(st.num_frames());
+        if let Some(index) = self.offset {
+            opts = opts.offset(pick(index, size));
+        }
+        if let Some(index) = self.lower_frame {
+            opts = opts.lower_frame(pick(index, num_frames) as u32);
+        }
+        if let Some(index) = self.offset_limit {
+            opts = opts.offset_limit(pick(index, size));
+        }
+        if let Some(index) = self.upper_frame {
+            opts = opts.upper_frame(pick(index, num_frames) as u32);
+        }
+        opts
+    }
+
+    /// The position and limit these options give a decoder over the frames of `st`, `None` if
+    /// an option is out of range. A frame overrides a position.
+    fn range(&self, st: &SeekTable) -> Option<(u64, u64)> {
         let size = st.size_decomp();
         let num_frames = u64::from(st.num_frames());
         let in_range = |pos: u64| (pos <= size).then_some(pos);
         let mut offset = Some(0);
         if let Some(index) = self.offset {
-            let pos = pick(index, size);
-            opts = opts.offset(pos);
-            offset = in_range(pos);
+            offset = in_range(pick(index, size));
         }
         if let Some(index) = self.lower_frame {
-            let frame = pick(index, num_frames) as u32;
-            opts = opts.lower_frame(frame);
-            offset = st.frame_start_decomp(frame).ok();
+            offset = st.frame_start_decomp(pick(index, num_frames) as u32).ok();
         }
         let mut limit = Some(size);
         if let Some(index) = self.offset_limit {
-            let pos = pick(index, size);
-            opts = opts.offset_limit(pos);
-            limit = in_range(pos);
+            limit = in_range(pick(index, size));
         }
         if let Some(index) = self.upper_frame {
-            let frame = pick(index, num_frames) as u32;
-            opts = opts.upper_frame(frame);
-            limit = st.frame_end_decomp(frame).ok();
+            limit = st.frame_end_decomp(pick(index, num_frames) as u32).ok();
         }
-        (opts, offset.zip(limit))
+        offset.zip(limit)
     }
 }
 
@@ -407,6 +374,7 @@ enum SeekCall {
     End(Index),
 }
 
+/// A seek from the start, from the current position either way, or from the end.
 fn seek_call() -> impl Strategy<Value = SeekCall> {
     prop_oneof![
         any::<Index>().prop_map(SeekCall::Start),
@@ -454,7 +422,7 @@ impl SeekCall {
     }
 }
 
-/// A call on a `Decoder`. Positions and frames pick from up to one past the valid range.
+/// A call on a `Decoder`. Positions and frames come from `pick`.
 #[derive(Clone, Debug)]
 enum Call {
     Decompress(usize),
@@ -466,6 +434,8 @@ enum Call {
     Reset,
 }
 
+/// Up to 40 calls, half of them decompressions of up to 400 bytes, the rest moves of the
+/// position or the limit, seeks and resets.
 fn calls() -> impl Strategy<Value = Vec<Call>> {
     let call = prop_oneof![
         8 => (1..400usize).prop_map(Call::Decompress),
@@ -477,11 +447,6 @@ fn calls() -> impl Strategy<Value = Vec<Call>> {
         1 => Just(Call::Reset),
     ];
     prop::collection::vec(call, 0..40)
-}
-
-/// `index` mapped to 0 up to one past `end`.
-fn pick(index: Index, end: u64) -> u64 {
-    index.index(end as usize + 2) as u64
 }
 
 /// Checks a decoder over `archive`, whose source returns `chunk` bytes per read, against a
@@ -514,8 +479,8 @@ fn check_decoder(
             DecodeOptions::new(Chunked::new(&archive.frames, chunk)).seek_table(parsed)
         }
     };
-    let (opts, set_up) = start.apply(opts, st);
-    let Some((mut offset, mut limit)) = set_up else {
+    let opts = start.apply(opts, st);
+    let Some((mut offset, mut limit)) = start.range(st) else {
         prop_assert!(opts.into_decoder().is_err());
         return Ok(());
     };
@@ -620,6 +585,7 @@ fn check_reference_reads(
     Ok(())
 }
 
+/// Up to 8 reads, each a position to pick and a length of up to 3000 bytes.
 fn reads() -> impl Strategy<Value = Vec<(Index, usize)>> {
     prop::collection::vec((any::<Index>(), 0..3000usize), 0..8)
 }
@@ -653,6 +619,7 @@ enum EncoderCall {
     EndFrame,
 }
 
+/// Up to 16 calls, two in three writing up to 3000 bytes, the rest flushes and frame endings.
 fn encoder_calls() -> impl Strategy<Value = Vec<EncoderCall>> {
     let call = prop_oneof![
         4 => (0..3000usize).prop_map(EncoderCall::Write),
@@ -733,6 +700,7 @@ impl Damage {
     }
 }
 
+/// A flipped byte four times in five, else a cut.
 fn damage() -> impl Strategy<Value = Damage> {
     prop_oneof![
         4 => (any::<Index>(), 1..=255u8).prop_map(|(at, mask)| Damage::Flip { at, mask }),
@@ -742,11 +710,21 @@ fn damage() -> impl Strategy<Value = Damage> {
 
 /// A change to the seek table entry of the frame `frame` picks: `delta` added to its compressed
 /// size if `compressed`, else to its decompressed size.
-type EntryChange = (Index, i64, bool);
+type EntryChange = (Index, i32, bool);
 
+/// One to three changes, by up to 3 or by up to 5000 either way.
 fn entry_changes() -> impl Strategy<Value = Vec<EntryChange>> {
-    let delta = prop_oneof![-3..=3i64, -5000..=5000i64];
+    let delta = prop_oneof![-3..=3i32, -5000..=5000i32];
     prop::collection::vec((any::<Index>(), delta, any::<bool>()), 1..4)
+}
+
+/// A seek table of frames with `sizes`, compressed size first.
+fn seek_table_of(sizes: &[(u32, u32)]) -> SeekTable {
+    let mut st = SeekTable::new();
+    for &(c_size, d_size) in sizes {
+        st.log_frame(c_size, d_size).unwrap();
+    }
+    st
 }
 
 /// The seek table of `archive` with `changes` made to its entries.
@@ -767,7 +745,7 @@ fn forge(archive: &Archive, changes: &[EntryChange]) -> SeekTable {
         } else {
             &mut entry.1
         };
-        *size = size.saturating_add_signed(*delta as i32);
+        *size = size.saturating_add_signed(*delta);
     }
     seek_table_of(&sizes)
 }
@@ -848,15 +826,6 @@ fn frame_sizes() -> impl Strategy<Value = Vec<(u32, u32)>> {
     prop::collection::vec((size(), size()), 0..300)
 }
 
-/// A seek table of frames with `sizes`, compressed size first.
-fn seek_table_of(sizes: &[(u32, u32)]) -> SeekTable {
-    let mut st = SeekTable::new();
-    for &(c_size, d_size) in sizes {
-        st.log_frame(c_size, d_size).unwrap();
-    }
-    st
-}
-
 /// Where frames of `sizes` start, followed by where the last one ends.
 fn bounds(sizes: impl Iterator<Item = u32>) -> Vec<u64> {
     let mut bounds = vec![0];
@@ -913,6 +882,7 @@ fn check_chunked_serialization(
             }
             let n = ser.write_into(&mut buf[..size]);
             prop_assert!(n <= size);
+            prop_assert!(n > 0 || size == 0, "the serializer stalled");
             written.extend(&buf[..n]);
         }
         prop_assert!(written == whole);
@@ -931,6 +901,7 @@ fn descriptor_at(format: Format, bytes: &[u8]) -> usize {
     }
 }
 
+/// Either seek table format.
 fn format() -> impl Strategy<Value = Format> {
     prop_oneof![Just(Format::Head), Just(Format::Foot)]
 }
@@ -1006,6 +977,34 @@ proptest! {
         calls in calls(),
     ) {
         check_decoder(&archive, &tables, chunk, &start, &calls)?;
+    }
+
+    /// A read takes no bytes but those of the frames holding its first and its last byte, so a
+    /// source that fetched only those serves it.
+    #[test]
+    fn reads_take_only_the_bytes_of_their_frames(
+        archive in archive(),
+        chunk in chunk(),
+        start in start(),
+        buf_len in 1..5000usize,
+    ) {
+        let st = &archive.seek_table;
+        let Some((offset, limit)) = start.range(st) else {
+            return Ok(());
+        };
+        let (window, wanted) = if offset < limit {
+            let first = st.frame_index_decomp(offset);
+            let last = st.frame_index_decomp(limit - 1);
+            let window = st.frame_start_comp(first).unwrap()..st.frame_end_comp(last).unwrap();
+            (window, &archive.input[offset as usize..limit as usize])
+        } else {
+            (0..0, &[][..])
+        };
+        let source = Chunked::new(&archive.frames, chunk).within(window);
+        let opts = DecodeOptions::new(source).seek_table(st.clone());
+        let mut decoder = start.apply(opts, st).into_decoder().unwrap();
+        let decoded = decode_all(&mut decoder, buf_len, archive.prefix.as_deref()).unwrap();
+        prop_assert!(decoded == wanted, "{}..{}", offset, limit);
     }
 
     #[test]
