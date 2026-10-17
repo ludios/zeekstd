@@ -17,6 +17,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   its seek table until `Decoder::reset` or a `Decoder::set_offset` backwards or into another frame.
   Retrying after a disagreeing frame used to return bytes from elsewhere in the frame as if they
   were the requested ones
+- `Decoder` rejects a frame that holds more than its seek table entry says once it reaches the
+  entry's end. It used to decompress on into what the table declares to be the following frames, so
+  a read that ended there returned the frame's surplus as their content without an error: one
+  flipped bit in the size of the next-to-last frame cut a whole-archive read short, checksums or not
 
 ## [7.0.0]
 

@@ -127,9 +127,6 @@ pub struct Decoder<'a, S> {
     src: S,
     /// Index of the frame the decompression context is in, or about to enter.
     frame_idx: u32,
-    /// Whether the decompression context sits between frames, i.e. the last frame it saw was
-    /// consumed completely, trailer included.
-    frame_done: bool,
     decomp_pos: u64,
     offset: u64,
     offset_limit: u64,
@@ -209,7 +206,6 @@ impl<'a, S: Seekable> Decoder<'a, S> {
             seek_table,
             src: opts.src,
             frame_idx: 0,
-            frame_done: true,
             decomp_pos: 0,
             offset,
             offset_limit,
@@ -273,10 +269,13 @@ impl<'a, S: Seekable> Decoder<'a, S> {
         // Decompressed end of the frame the context is in, `None` past the last frame
         let mut frame_end = self.seek_table.frame_end_decomp(self.frame_idx).ok();
         loop {
-            // Stop once no more output is wanted, unless the frame that produced the last wanted
-            // byte still has its trailer to consume.
+            // The output window below ends at the current frame's declared end at the latest, so
+            // the context never gets past it
+            debug_assert!(frame_end.is_none_or(|end| self.decomp_pos <= end));
+            // Stop once no more output is wanted, unless the frame ends right here and still has
+            // to be consumed: its trailer, or all of it if it is empty
             let output_wanted = self.offset < self.offset_limit && output_progress < buf.len();
-            if !output_wanted && !trailer_pending(self.frame_done, frame_end, self.decomp_pos) {
+            if !output_wanted && frame_end != Some(self.decomp_pos) {
                 break;
             }
 
@@ -295,14 +294,18 @@ impl<'a, S: Seekable> Decoder<'a, S> {
             }
 
             let mut in_buffer = InBuffer::around(&self.in_buf[self.in_buf_pos..self.in_buf_limit]);
+            // A frame gets no room beyond its declared end: one that holds more stalls there
+            let frame_stop = frame_end.unwrap_or(u64::MAX);
             let mut out_buffer = if self.decomp_pos < self.offset {
                 // Dummy decompression until we get to offset
-                let limit = (self.offset - self.decomp_pos).min(self.out_buf.len() as u64) as usize;
+                let limit = (self.offset.min(frame_stop) - self.decomp_pos)
+                    .min(self.out_buf.len() as u64) as usize;
                 OutBuffer::around(&mut self.out_buf[..limit])
             } else {
                 // Bytes we still need to decompress, capped at usize::MAX
                 let remaining: usize = self
                     .offset_limit
+                    .min(frame_stop)
                     .saturating_sub(self.decomp_pos)
                     .try_into()
                     .unwrap_or(usize::MAX);
@@ -313,9 +316,7 @@ impl<'a, S: Seekable> Decoder<'a, S> {
             let in_len = self.in_buf_limit - self.in_buf_pos;
             while in_buffer.pos() < in_len {
                 let pos = self.decomp_pos + out_buffer.pos() as u64;
-                if out_buffer.pos() == out_buffer.capacity()
-                    && !trailer_pending(self.frame_done, frame_end, pos)
-                {
+                if out_buffer.pos() == out_buffer.capacity() && frame_end != Some(pos) {
                     break;
                 }
 
@@ -324,16 +325,15 @@ impl<'a, S: Seekable> Decoder<'a, S> {
                     .dctx
                     .decompress_stream(&mut out_buffer, &mut in_buffer)
                     .map_err(|code| record(&mut self.failure, Failure::Zstd(code)))?;
-                // Given input and room for output, zstd always makes progress. The only call
-                // made without room is the trailer drain, so a stall means the frame holds more
-                // data than its seek table entry says.
+                // Given input and room for output, zstd always makes progress. The only calls
+                // made without room are at the declared end of a frame, so a stall means the
+                // frame holds more data than its seek table entry says.
                 if in_buffer.pos() == in_before && out_buffer.pos() == out_before {
                     return Err(record(&mut self.failure, Failure::FrameSizeMismatch));
                 }
 
                 // Frame end
-                self.frame_done = n == 0;
-                if self.frame_done {
+                if n == 0 {
                     let end = self.decomp_pos + out_buffer.pos() as u64;
                     if frame_end != Some(end) {
                         return Err(record(&mut self.failure, Failure::FrameSizeMismatch));
@@ -365,13 +365,6 @@ impl<'a, S: Seekable> Decoder<'a, S> {
 
         Ok(output_progress)
     }
-}
-
-/// Whether a decompression context that sits at decompressed position `pos` still has to consume
-/// the trailer of its current frame, which ends at `frame_end` (`None` past the last frame).
-/// `frame_done` tells whether the context is between frames.
-fn trailer_pending(frame_done: bool, frame_end: Option<u64>, pos: u64) -> bool {
-    !frame_done && frame_end == Some(pos)
 }
 
 impl<S: Seekable> Decoder<'_, S> {
@@ -455,7 +448,6 @@ impl<S: Seekable> Decoder<'_, S> {
 
     fn reset_dctx(&mut self) {
         self.read_compressed = 0;
-        self.frame_done = true;
         self.failure = None;
         self.dctx
             .reset(ResetDirective::SessionOnly)
@@ -996,6 +988,35 @@ mod tests {
                 result.as_ref().map(Vec::len)
             );
         }
+    }
+
+    #[test]
+    fn frame_declared_shorter_than_the_frames_after_it_is_rejected() {
+        let input = noise(2050);
+        let seekable = encode(&input, Some(FrameSizePolicy::Uncompressed(1000)), true);
+        let st = SeekTable::from_seekable(&mut BytesWrapper::new(&seekable)).unwrap();
+        assert_eq!(st.num_frames(), 3);
+
+        // Frame 1 declared 100 bytes short, more than the 50 of frame 2, so that the declared
+        // end of the archive falls inside frame 1
+        let mut wrong = SeekTable::new();
+        for i in 0..st.num_frames() {
+            let c_size = st.frame_size_comp(i).unwrap() as u32;
+            let d_size = st.frame_size_decomp(i).unwrap() as u32;
+            wrong
+                .log_frame(c_size, if i == 1 { d_size - 100 } else { d_size })
+                .unwrap();
+        }
+        let mut decoder = DecodeOptions::new(BytesWrapper::new(&seekable))
+            .seek_table(wrong)
+            .into_decoder()
+            .unwrap();
+        let result = decode_all(&mut decoder, 4096);
+        assert!(
+            result.as_ref().is_err_and(Error::is_frame_size_mismatch),
+            "{:?}",
+            result.as_ref().map(Vec::len)
+        );
     }
 
     #[test]
