@@ -1,5 +1,6 @@
 // Model-output: Claude Fable 5.1
 // Model-output: Claude Opus 5
+// Model-output: Claude Mythos 5.1
 use alloc::vec;
 use alloc::vec::Vec;
 
@@ -389,14 +390,16 @@ impl SeekTable {
     /// [`Foot`] format.
     ///
     /// The frames fill the archive up to the seek table, so their compressed sizes must add up
-    /// to its position. That rejects any one changed compressed size in the table, which a read
-    /// of the frames in order would not notice. [`Self::from_seekable_format`] parses a table
-    /// without this check, wherever it sits.
+    /// to its position, as [`Seekable::set_offset`] reports it. That rejects any one changed
+    /// compressed size in the table as the archive is opened, where the decoder notices it only
+    /// once a read gets to the frame's end. [`Self::from_seekable_format`] parses a table without
+    /// this check.
     ///
     /// # Errors
     ///
     /// Fails if the seek table is not in [`Foot`] format, if the frames do not add up to its
-    /// position, or if verification fails for another reason.
+    /// position ([`crate::Error::is_seek_table_position_mismatch`]), or if verification fails
+    /// for another reason.
     ///
     /// [`Foot`]: Format#variant.Foot
     ///
@@ -435,15 +438,16 @@ impl SeekTable {
     pub fn from_seekable(src: &mut impl Seekable) -> Result<Self> {
         let (seek_table, table_start) = Self::parse_seekable(src, Format::Foot)?;
         if seek_table.size_comp() != table_start {
-            return Err(Error::zstd(ZSTD_ErrorCode::ZSTD_error_corruption_detected));
+            return Err(Error::seek_table_position_mismatch());
         }
         Ok(seek_table)
     }
 
     /// Parses the seek table from a seekable input, expecting the given `format`.
     ///
-    /// The table may sit anywhere, e.g. alone in a file of its own: unlike
-    /// [`Self::from_seekable`], this does not check it against the frames.
+    /// The table may stand alone, as in a file of its own, or end (`Foot`) or start (`Head`) a
+    /// source that holds other data too: unlike [`Self::from_seekable`], this does not check it
+    /// against the frames.
     ///
     /// # Errors
     ///
@@ -1343,7 +1347,7 @@ mod tests {
                 assert_eq!(parsed.unwrap(), st);
             } else {
                 assert!(
-                    parsed.is_err(),
+                    parsed.is_err_and(|err| err.is_seek_table_position_mismatch()),
                     "{filler} bytes before the table were accepted"
                 );
             }

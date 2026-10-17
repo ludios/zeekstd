@@ -157,7 +157,7 @@ fn from_reader_rejects_truncated_table() {
 fn forged_frame_count_does_not_allocate_before_validation() {
     let forged = foot_table_without_entries(10_000_000);
     PeakAlloc::reset();
-    let result = SeekTable::from_seekable(&mut BytesWrapper::new(&forged));
+    let result = SeekTable::from_seekable_format(&mut BytesWrapper::new(&forged), Format::Foot);
     let peak = PeakAlloc::peak();
     assert!(result.is_err());
     assert!(
@@ -248,7 +248,7 @@ fn zero_frame_table_lookups_do_not_panic() {
 fn oversized_skippable_header_is_rejected() {
     let mut table = one_frame_table(1, 1, Format::Foot);
     table[4..8].copy_from_slice(&u32::MAX.to_le_bytes());
-    assert!(SeekTable::from_seekable(&mut BytesWrapper::new(&table)).is_err());
+    assert!(SeekTable::from_seekable_format(&mut BytesWrapper::new(&table), Format::Foot).is_err());
 }
 
 /// Finding 15: `Write::flush` must push data that zstd still holds through to the writer.

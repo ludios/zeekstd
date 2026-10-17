@@ -1,6 +1,7 @@
 // Model-output: Claude Fable 5.1
 // Model-output: Claude Opus 4.8
 // Model-output: Claude Opus 5.5
+// Model-output: Claude Mythos 5.1
 //! Property tests of the public API.
 //!
 //! Archives are built from random input by random sequences of encoder calls, with output
@@ -1194,7 +1195,7 @@ proptest! {
 
     /// Serialization does not depend on the buffer sizes, and parsing gets back the table from
     /// sources that return few bytes per read and hold other data next to the table. An archive
-    /// is read only when that data is as long as the frames the table lists.
+    /// opens only when the data before its foot table is as long as the frames the table lists.
     #[test]
     fn seek_tables_round_trip(
         sizes in frame_sizes(),
@@ -1216,13 +1217,21 @@ proptest! {
                 Format::Foot => [&other[..], &bytes].concat(),
             };
             prop_assert_eq!(&parse(&beside).unwrap(), &st);
-            if let Format::Foot = format {
-                let archive = SeekTable::from_seekable(&mut Chunked::new(&beside, chunk));
-                if other.len() as u64 == st.size_comp() {
-                    prop_assert_eq!(&archive.unwrap(), &st);
-                } else {
-                    prop_assert!(archive.is_err());
-                }
+        }
+
+        // A table of small frames opens as an archive behind just as many bytes as they take,
+        // and behind any other number of bytes it does not
+        let small_sizes: Vec<(u32, u32)> = sizes.iter().map(|&(c, d)| (c % 64, d)).collect();
+        let small = seek_table_of(&small_sizes);
+        let table = serialize(&small, Format::Foot);
+        let frames_len = small.size_comp() as usize;
+        for filler in [frames_len.saturating_sub(1), frames_len, frames_len + 1] {
+            let archive = [&vec![0; filler][..], &table].concat();
+            let opened = SeekTable::from_seekable(&mut Chunked::new(&archive, chunk));
+            if filler == frames_len {
+                prop_assert_eq!(&opened.unwrap(), &small);
+            } else {
+                prop_assert!(opened.is_err_and(|err| err.is_seek_table_position_mismatch()));
             }
         }
 

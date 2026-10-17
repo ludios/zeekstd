@@ -11,8 +11,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - `SeekTable::from_seekable` requires the frames' compressed sizes to add up to the seek table's
   position in the source, as they do in an archive, so that a changed compressed-size entry is
-  rejected when the archive is opened rather than when a read reaches the frame, if ever. A seek
-  table on its own is still read by `SeekTable::from_seekable_format`
+  rejected when the archive is opened rather than when a read reaches the frame, if ever; the
+  error answers to `Error::is_seek_table_position_mismatch`. A seek table on its own is still read
+  by `SeekTable::from_seekable_format`
 
 ### Removed
 
@@ -41,8 +42,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   caller reading a known length never saw the error
 - `Decoder` rejects a frame whose compressed size differs from its seek table entry once it reaches
   the frame's end, as it does for the decompressed size. A changed compressed-size entry used to
-  pass a whole read unnoticed, and a seek that it sent onto another frame of the same decompressed
-  size returned that frame's content as the requested one
+  pass a whole read unnoticed. A seek that such an entry sends onto another frame still returns
+  that frame's content as the requested one if the frame has both the listed sizes and passes its
+  checksum; opening the archive with `SeekTable::from_seekable` catches the entry instead
 
 ## [7.0.0]
 
