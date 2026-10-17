@@ -34,12 +34,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   entry's end. It used to decompress on into what the table declares to be the following frames, so
   a read that ended there returned the frame's surplus as their content without an error: one
   flipped bit in the size of the next-to-last frame cut a whole-archive read short, checksums or not
-- `Decoder::decompress` returns the bytes from complete frames that it placed in the buffer before
-  a read from the source failed or found it ended, and that error on the call after. It used to
-  return an unexpected-EOF error right away and leave the bytes unreported. If the read was for the
-  trailer of the frame the last bytes came from, the call fails and takes them back instead, so
-  that a retry produces them again; it used to return them, and a caller reading a known length
-  never saw the error
+- `Decoder::decompress` returns the bytes it placed in the buffer before a read from the source
+  failed or found it ended, and that error on the call after. It used to return an unexpected-EOF
+  error right away and leave the bytes unreported. The bytes of a frame whose trailer the read was
+  for are taken back instead, for a retry to produce them again; they used to be returned, and a
+  caller reading a known length never saw the error
 - `Decoder` rejects a frame whose compressed size differs from its seek table entry once it reaches
   the frame's end, as it does for the decompressed size. A changed compressed-size entry used to
   pass a whole read unnoticed, and a seek that it sent onto another frame of the same decompressed

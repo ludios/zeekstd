@@ -1,6 +1,7 @@
 // Model-output: Claude Fable 5.1
 // Model-output: Claude Opus 5
 // Model-output: Claude Opus 5.5
+// Model-output: Claude Mythos 5.1
 use alloc::vec;
 use alloc::vec::Vec;
 use zstd_safe::{DCtx, ErrorCode, InBuffer, OutBuffer, ResetDirective};
@@ -254,6 +255,54 @@ impl<'a, S: Seekable> Decoder<'a, S> {
         Ok(())
     }
 
+    /// Puts the decompression context at the start of the frame at `frame_idx`, with the source
+    /// positioned there and `prefix` referenced, if any. The count of compressed bytes read
+    /// becomes what it was up to there.
+    fn enter_frame<'b: 'a>(&mut self, prefix: Option<&'b [u8]>) -> Result<()> {
+        let start = self.seek_table.frame_start_comp(self.frame_idx)?;
+        self.src.set_offset(OffsetFrom::Start(start))?;
+        self.read_compressed = start - self.comp_start;
+        self.decomp_pos = self.seek_table.frame_start_decomp(self.frame_idx)?;
+        self.frame_done = true;
+        // Trigger reading from src
+        self.in_buf_pos = 0;
+        self.in_buf_limit = 0;
+        if let Some(pref) = prefix {
+            self.dctx.ref_prefix(pref)?;
+        }
+        Ok(())
+    }
+
+    /// After a failed read: if the context owes the trailer of its frame, having produced all
+    /// of the frame's bytes, those placed in the buffer from `offset_at_entry` on are unverified.
+    /// They are taken back, and the context is put at the frame again for a retry to produce
+    /// them. Returns how many bytes were taken back.
+    fn take_back<'b: 'a>(&mut self, offset_at_entry: u64, prefix: Option<&'b [u8]>) -> usize {
+        let st = &self.seek_table;
+        let (Ok(start), Ok(end)) = (
+            st.frame_start_decomp(self.frame_idx),
+            st.frame_end_decomp(self.frame_idx),
+        ) else {
+            return 0;
+        };
+        if self.frame_done || end != self.decomp_pos {
+            return 0;
+        }
+        let kept = offset_at_entry.max(start);
+        let taken = self.decomp_pos.saturating_sub(kept) as usize;
+        if taken > 0 {
+            self.offset = kept;
+            self.dctx
+                .reset(ResetDirective::SessionOnly)
+                .expect("Resetting session never fails");
+            // Should the source refuse the position, the next call starts over from the offset
+            if self.enter_frame(prefix).is_err() {
+                self.reset_dctx();
+            }
+        }
+        taken
+    }
+
     /// Decompresses data from the internal source.
     ///
     /// Call this repetetively to fill `buf` with decompressed data. Returns the number of bytes
@@ -261,8 +310,9 @@ impl<'a, S: Seekable> Decoder<'a, S> {
     ///
     /// Every frame that gets decompressed to its end is verified, i.e. its checksum if it has
     /// one, and its decompressed and compressed sizes against the seek table. An offset limit inside a frame
-    /// skips the verification of that frame. A frame that the seek table declares empty is read
-    /// and verified only between other frames of the read, not at its offset or at its limit.
+    /// skips the verification of that frame. A frame that the seek table declares empty is
+    /// read and verified only between other frames of the read, not at its offset or at its
+    /// limit.
     ///
     /// If a `prefix` is passed, it will be referenced at the beginning of every frame.
     /// Referencing a raw content prefix has almost no CPU nor memory cost.
@@ -274,9 +324,9 @@ impl<'a, S: Seekable> Decoder<'a, S> {
     /// frame, every call returns the same error until [`Self::reset`] or a [`Self::set_offset`]
     /// that cannot continue from the current position. A failed read from the source, or one
     /// that finds it ended, is retried by the next call instead: a call that already placed
-    /// bytes from complete frames in `buf` returns them first. If the read was for the trailer
-    /// of the frame the last of them came from, the call fails and takes them back, so that a
-    /// retry produces them again and no unverified frame passes for a complete one.
+    /// bytes in `buf` returns them first. Only the bytes of a frame whose trailer the read was
+    /// for are taken back, for the retry to produce them again, so that no frame passes for a
+    /// complete, verified one while its trailer is missing.
     #[allow(clippy::missing_panics_doc)]
     pub fn decompress_with_prefix<'b: 'a>(
         &mut self,
@@ -293,17 +343,8 @@ impl<'a, S: Seekable> Decoder<'a, S> {
 
         if self.read_compressed == 0 {
             self.frame_idx = self.seek_table.frame_index_decomp(self.offset);
-            let start_pos = self.seek_table.frame_start_comp(self.frame_idx)?;
-            self.src.set_offset(OffsetFrom::Start(start_pos))?;
-            self.comp_start = start_pos;
-            self.decomp_pos = self.seek_table.frame_start_decomp(self.frame_idx)?;
-            // Reference prefix at the beginning of decompression
-            if let Some(pref) = prefix {
-                self.dctx.ref_prefix(pref)?;
-            }
-            // Trigger reading from src
-            self.in_buf_pos = 0;
-            self.in_buf_limit = 0;
+            self.comp_start = self.seek_table.frame_start_comp(self.frame_idx)?;
+            self.enter_frame(prefix)?;
         }
 
         let offset_at_entry = self.offset;
@@ -323,14 +364,11 @@ impl<'a, S: Seekable> Decoder<'a, S> {
             }
 
             if let Err(err) = self.fill_in_buf() {
-                // Bytes already placed in `buf` are reported, and the failed or empty read is
-                // left for the next call to retry and report, unless the read was for the
-                // trailer of the frame the last of them came from: unverified, they are taken
-                // back instead, so that a retry produces them again
-                if !self.frame_done && frame_end == Some(self.decomp_pos) {
-                    self.offset = offset_at_entry;
-                    self.reset_dctx();
-                } else if output_progress > 0 {
+                // Bytes already placed in `buf` are reported, but for those of a frame whose
+                // trailer the read was for, and the failed or empty read is left for the next
+                // call to retry and report
+                output_progress -= self.take_back(offset_at_entry, prefix);
+                if output_progress > 0 {
                     break;
                 }
                 return Err(err);
@@ -341,26 +379,25 @@ impl<'a, S: Seekable> Decoder<'a, S> {
             let frame_stop = frame_end.unwrap_or(u64::MAX);
             let mut out_buffer = if self.decomp_pos < self.offset {
                 // Dummy decompression until we get to offset
-                let limit = (self.offset.min(frame_stop) - self.decomp_pos)
+                let len = (self.offset.min(frame_stop) - self.decomp_pos)
                     .min(self.out_buf.len() as u64) as usize;
-                OutBuffer::around(&mut self.out_buf[..limit])
+                OutBuffer::around(&mut self.out_buf[..len])
             } else {
                 // Bytes we still need to decompress, capped at usize::MAX
-                let remaining: usize = self
-                    .offset_limit
+                let remaining: usize = limit
                     .min(frame_stop)
                     .saturating_sub(self.decomp_pos)
                     .try_into()
                     .unwrap_or(usize::MAX);
-                let limit = buf.len().min(output_progress.saturating_add(remaining));
-                OutBuffer::around(&mut buf[output_progress..limit])
+                let end = buf.len().min(output_progress.saturating_add(remaining));
+                OutBuffer::around(&mut buf[output_progress..end])
             };
 
             let in_len = self.in_buf_limit - self.in_buf_pos;
             while in_buffer.pos() < in_len {
                 let pos = self.decomp_pos + out_buffer.pos() as u64;
                 if out_buffer.pos() == out_buffer.capacity()
-                    && !frame_pending(self.frame_done, frame_end, pos, self.offset_limit)
+                    && !frame_pending(self.frame_done, frame_end, pos, limit)
                 {
                     break;
                 }
@@ -1542,15 +1579,37 @@ mod tests {
             }
         }
 
-        /// Decompresses `seekable` through a source whose reads in `failing_reads` fail with
-        /// `kind`, retrying as a caller would. Returns the output, how many errors reached the
-        /// caller, and how many reads the source saw.
+        /// Decompresses from `decoder` in `buf_len`-byte steps until it reports the end,
+        /// retrying after an error from the source as a caller would. Returns the output, or
+        /// the first error that is not from the source, with how many source errors reached
+        /// the caller.
+        fn drain_with_retries<S: Seekable>(
+            decoder: &mut Decoder<'_, S>,
+            buf_len: usize,
+        ) -> (Result<Vec<u8>>, usize) {
+            let mut output = vec![];
+            let mut buf = vec![0; buf_len];
+            let mut errors = 0;
+            loop {
+                match decoder.decompress(&mut buf) {
+                    Ok(0) => return (Ok(output), errors),
+                    Ok(n) => output.extend(&buf[..n]),
+                    Err(err) if err.is_io() => errors += 1,
+                    Err(err) => return (Err(err), errors),
+                }
+            }
+        }
+
+        /// Decompresses `seekable` by `seek_table` through a source whose reads in
+        /// `failing_reads` fail with `kind`, retrying as a caller would. Returns what
+        /// `drain_with_retries` does, and how many reads the source saw. A read to the end has
+        /// consumed every compressed byte, source errors or not.
         fn decompress_with_retries(
             seekable: &[u8],
             seek_table: &SeekTable,
             failing_reads: Range<usize>,
             kind: ErrorKind,
-        ) -> (Vec<u8>, usize, usize) {
+        ) -> (Result<Vec<u8>>, usize, usize) {
             let mut src = FlakySource {
                 inner: Cursor::new(seekable),
                 chunk: 64,
@@ -1562,21 +1621,13 @@ mod tests {
                 .seek_table(seek_table.clone())
                 .into_decoder()
                 .unwrap();
-            let mut output = vec![];
-            let mut buf = vec![0; INPUT.len()];
-            let mut errors = 0;
-            loop {
-                match decoder.decompress(&mut buf) {
-                    Ok(0) => break,
-                    Ok(n) => output.extend(&buf[..n]),
-                    Err(err) => {
-                        assert!(err.is_io());
-                        errors += 1;
-                    }
-                }
+            let buf_len = seek_table.size_decomp().max(1) as usize;
+            let (result, errors) = drain_with_retries(&mut decoder, buf_len);
+            if result.is_ok() {
+                assert_eq!(decoder.read_compressed(), seek_table.size_comp());
             }
             drop(decoder);
-            (output, errors, src.reads)
+            (result, errors, src.reads)
         }
 
         #[test]
@@ -1601,10 +1652,114 @@ mod tests {
                     fail_at + 1
                 );
                 assert_eq!(
-                    output,
+                    output.unwrap(),
                     INPUT.as_bytes(),
                     "wrong output after reads {fail_at} and {} failed",
                     fail_at + 1
+                );
+            }
+        }
+
+        #[test]
+        fn read_errors_never_lose_output_with_checksums() {
+            let input = noise(7000);
+            let seekable = encode(&input, Some(FrameSizePolicy::Uncompressed(1000)), true);
+            let st = SeekTable::from_seekable(&mut BytesWrapper::new(&seekable)).unwrap();
+            let (_, _, reads) = decompress_with_retries(&seekable, &st, 0..0, ErrorKind::TimedOut);
+            for fail_at in 0..reads {
+                let (output, _, _) = decompress_with_retries(
+                    &seekable,
+                    &st,
+                    fail_at..fail_at + 2,
+                    ErrorKind::TimedOut,
+                );
+                assert_eq!(
+                    output.unwrap(),
+                    input,
+                    "after reads {fail_at} and {} failed",
+                    fail_at + 1
+                );
+            }
+        }
+
+        #[test]
+        fn a_read_error_at_a_trailer_takes_the_frame_back() {
+            let data = noise(2000);
+            let (archive, st) = frames(&[&data[..1000], &data[1000..]], None, true);
+            let c_size = st.frame_size_comp(0).unwrap() as usize;
+            assert_eq!(st.frame_size_comp(1).unwrap() as usize, c_size);
+            // Reads of two bytes short of a frame: the third read is for frame 1's checksum
+            // alone, and fails
+            let mut src = FlakySource {
+                inner: Cursor::new(&archive[..]),
+                chunk: c_size - 2,
+                reads: 0,
+                failing_reads: 2..3,
+                kind: ErrorKind::TimedOut,
+            };
+            let mut decoder = DecodeOptions::new(&mut src)
+                .seek_table(st.clone())
+                .into_decoder()
+                .unwrap();
+            let mut buf = vec![0; 4096];
+            // Frame 0 is complete and reported, frame 1's bytes are taken back
+            assert_eq!(decoder.decompress(&mut buf).unwrap(), 1000);
+            assert_eq!(buf[..1000], data[..1000]);
+            assert_eq!(decoder.offset(), 1000);
+            assert_eq!(decoder.read_compressed(), c_size as u64);
+            // The retry produces frame 1 again, trailer included
+            assert_eq!(decoder.decompress(&mut buf).unwrap(), 1000);
+            assert_eq!(buf[..1000], data[1000..]);
+            assert_eq!(decoder.decompress(&mut buf).unwrap(), 0);
+            assert_eq!(decoder.read_compressed(), st.size_comp());
+        }
+
+        #[test]
+        fn a_zeroed_entry_between_frames_is_noticed_despite_read_errors() {
+            let data = noise(2500);
+            let pieces: [&[u8]; 3] = [&data[..1000], &data[1000..1500], &data[1500..]];
+            let (archive, st) = frames(&pieces, None, true);
+            let mut zeroed = SeekTable::new();
+            for i in 0..3 {
+                let d_size = if i == 1 {
+                    0
+                } else {
+                    st.frame_size_decomp(i).unwrap() as u32
+                };
+                zeroed
+                    .log_frame(st.frame_size_comp(i).unwrap() as u32, d_size)
+                    .unwrap();
+            }
+            // Frame 0 alone, then up to frame 2: the second read enters the frame declared
+            // empty, which holds 500 bytes, and must fail on it whichever read fails
+            let read_frames = |failing_reads: Range<usize>| {
+                let mut src = FlakySource {
+                    inner: Cursor::new(&archive[..]),
+                    chunk: 64,
+                    reads: 0,
+                    failing_reads,
+                    kind: ErrorKind::TimedOut,
+                };
+                let mut decoder = DecodeOptions::new(&mut src)
+                    .seek_table(zeroed.clone())
+                    .upper_frame(0)
+                    .into_decoder()
+                    .unwrap();
+                let (first, _) = drain_with_retries(&mut decoder, 4096);
+                assert_eq!(first.unwrap(), &data[..1000]);
+                decoder.set_upper_frame(2).unwrap();
+                let (rest, _) = drain_with_retries(&mut decoder, 4096);
+                drop(decoder);
+                (rest, src.reads)
+            };
+            let (rest, reads) = read_frames(0..0);
+            assert!(rest.as_ref().is_err_and(Error::is_frame_size_mismatch));
+            for fail_at in 0..reads {
+                let (rest, _) = read_frames(fail_at..fail_at + 1);
+                assert!(
+                    rest.as_ref().is_err_and(Error::is_frame_size_mismatch),
+                    "read {fail_at} failed: {:?}",
+                    rest.as_ref().map(Vec::len)
                 );
             }
         }
@@ -1624,7 +1779,7 @@ mod tests {
                     ErrorKind::Interrupted,
                 );
                 assert_eq!(errors, 0, "interruption of read {fail_at} leaked");
-                assert_eq!(output, INPUT.as_bytes());
+                assert_eq!(output.unwrap(), INPUT.as_bytes());
             }
         }
     }
