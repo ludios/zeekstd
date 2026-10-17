@@ -802,8 +802,8 @@ fn forge(archive: &Archive, changes: &[EntryChange]) -> SeekTable {
 /// before it may have moved where frames start, onto another frame. So it must have decoded the
 /// frames from the one that really starts where `forged` says its frame does, each of the sizes
 /// `forged` gives it, compressed and decompressed, and return their content from as far into the
-/// first as `offset` lies by `forged`. Frames `forged` declares empty before the first or after the last with content are
-/// never entered, so they go unchecked.
+/// first as `offset` lies by `forged`. Frames `forged` declares empty before the first or after
+/// the last with content are never entered, so they go unchecked.
 fn check_forged_read(
     archive: &Archive,
     forged: SeekTable,

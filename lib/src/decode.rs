@@ -309,10 +309,10 @@ impl<'a, S: Seekable> Decoder<'a, S> {
     /// written to `buf`. Decompression is finished when no more bytes are written to `buf`.
     ///
     /// Every frame that gets decompressed to its end is verified, i.e. its checksum if it has
-    /// one, and its decompressed and compressed sizes against the seek table. An offset limit inside a frame
-    /// skips the verification of that frame. A frame that the seek table declares empty is
-    /// read and verified only between other frames of the read, not at its offset or at its
-    /// limit.
+    /// one, and its decompressed and compressed sizes against the seek table. An offset limit
+    /// inside a frame skips the verification of that frame. A frame that the seek table declares
+    /// empty is read and verified only between other frames of the read, not at its offset or at
+    /// its limit.
     ///
     /// If a `prefix` is passed, it will be referenced at the beginning of every frame.
     /// Referencing a raw content prefix has almost no CPU nor memory cost.
