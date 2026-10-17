@@ -1,8 +1,9 @@
+# Model-output: Claude Opus 5.5
+
 [package]
 name = "zeekstd"
-# The upstream release this fork is based on, plus `+prime.N`. Bump N whenever what the encoders
-# write or what the decoders verify changes; programs record it from `zeekstd::VERSION`.
-version = "0.6.2+prime.1"
+# The ludios fork's own version line, apart from upstream's 0.x; `VERSION` says when it changes.
+version = "7.0.0"
 description.workspace = true
 edition.workspace = true
 license.workspace = true

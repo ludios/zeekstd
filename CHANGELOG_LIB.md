@@ -5,7 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [7.0.0]
+
+The first version of the ludios fork, which has its own version line from here on. It contains
+upstream 0.6.2 and the upstream fixes after it up to 9c6533b.
 
 ### Fixed
 
@@ -42,9 +45,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - `RawEncoder::flush` flushes the compression context into an output buffer without ending the
   frame. A frame ending that `RawEncoder::end_frame` left pending is finished instead
-- `VERSION`, this crate's version, so that a program can record which zeekstd wrote an archive.
-  The version is the upstream release plus `+prime.N`, and N goes up whenever what the encoders
-  write or what the decoders verify changes
+- `VERSION`, this crate's version, so that a program can record which zeekstd wrote a
+  compressed file
 
 The `Error` struct has changed:
 

@@ -49,9 +49,9 @@ pub use seekable::{BytesWrapper, OffsetFrom, Seekable};
 // Re-export as it's part of the API.
 pub use zstd_safe::CompressionLevel;
 
-/// The version of this crate. Its `+prime.N` build metadata goes up whenever what the encoders
-/// write or what the decoders verify changes, so that a program can record which zeekstd wrote
-/// an archive.
+/// The version of this crate. It goes up with every change to what the crate writes or to what
+/// it accepts when reading, so that a program can record which zeekstd wrote a compressed file.
+/// What gets written also depends on the linked libzstd, `zstd_safe::version_string()`.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// The magic number of the seek table integrity field.
@@ -318,11 +318,39 @@ mod tests {
         test_cycle_std(None);
     }
 
-    // A merge that takes upstream's version would make this fork's output indistinguishable
-    // from upstream's in what programs record.
+    // What this version writes with this libzstd for two checksummed frames. When it fails
+    // because the bytes changed, bump `VERSION`, unless only the libzstd did; then update both.
     #[test]
-    fn version_names_the_fork() {
-        assert!(VERSION.contains("+prime."), "{VERSION}");
+    #[cfg(feature = "std")]
+    fn version_pins_output() {
+        use std::io::Write;
+
+        #[rustfmt::skip]
+        const EXPECTED: [u8; 89] = [
+            0x28, 0xb5, 0x2f, 0xfd, 0x04, 0x68, 0x7d, 0x00, 0x00, 0x48, 0x7a, 0x65,
+            0x65, 0x6b, 0x73, 0x74, 0x64, 0x20, 0x7a, 0x01, 0x00, 0x78, 0xba, 0x47,
+            0xb1, 0xc8, 0x76, 0x69, 0x28, 0xb5, 0x2f, 0xfd, 0x04, 0x68, 0x7d, 0x00,
+            0x00, 0x48, 0x73, 0x74, 0x64, 0x20, 0x7a, 0x65, 0x65, 0x6b, 0x73, 0x01,
+            0x00, 0x70, 0xba, 0x47, 0x2f, 0xa3, 0xe3, 0x50, 0x5e, 0x2a, 0x4d, 0x18,
+            0x19, 0x00, 0x00, 0x00, 0x1c, 0x00, 0x00, 0x00, 0x64, 0x00, 0x00, 0x00,
+            0x1c, 0x00, 0x00, 0x00, 0x5c, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,
+            0x00, 0xb1, 0xea, 0x92, 0x8f,
+        ];
+
+        let mut written = vec![];
+        let mut encoder = EncodeOptions::new()
+            .checksum_flag(true)
+            .compression_level(19)
+            .frame_size_policy(FrameSizePolicy::Uncompressed(100))
+            .into_encoder(&mut written)
+            .unwrap();
+        encoder.write_all(&b"zeekstd ".repeat(24)).unwrap();
+        encoder.finish().unwrap();
+
+        assert_eq!(
+            (VERSION, zstd_safe::version_string(), written.as_slice()),
+            ("7.0.0", "1.5.7", EXPECTED.as_slice())
+        );
     }
 
     proptest! {
