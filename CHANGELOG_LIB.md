@@ -53,6 +53,14 @@ The `Error` struct has changed:
   `ErrorKind::UnexpectedEof`. The `Write` impl of `Encoder` and the `Read` impl of `Decoder` use it
   instead of wrapping every error as `ErrorKind::Other`
 
+### Changed
+
+- zstd-safe was updated from 7 to 8. `EncodeOptions` and `DecodeOptions` now take the zstd-safe 8
+  `CCtx` and `DCtx`, so callers that pass their own contexts must use zstd-safe 8 as well.
+  A context that reported an error now returns it from every later call until it is reset, by
+  `Decoder::reset` or a `Decoder::set_offset` backwards or into another frame, or by
+  `RawEncoder::reset_frame`
+
 ## [0.6.2]
 
 ### Fixed
