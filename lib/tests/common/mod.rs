@@ -1,5 +1,6 @@
 // Model-output: Claude Fable 5.1
 // Model-output: Claude Opus 5.5
+// Model-output: Claude Mythos 5.1
 //! Sources and loops shared by the test suites.
 #![allow(dead_code)]
 
@@ -11,11 +12,16 @@ use std::{
 use zeekstd::{Decoder, SeekTable, seek_table::Format};
 
 /// A `Read + Seek` source that returns at most `chunk` bytes per read, and only bytes of its
-/// window if it has one, like a source that fetched just those: a read elsewhere fails.
+/// window if it has one, like a source that fetched just those: a read elsewhere fails. Reads
+/// can also fail on a schedule, as over a flaky connection.
 pub struct Chunked<'a> {
     pub inner: Cursor<&'a [u8]>,
     chunk: usize,
     window: Option<Range<u64>>,
+    /// Bit `i` set makes every read whose index is `i` modulo 64 fail.
+    failing: u64,
+    /// How many reads were asked for.
+    reads: u32,
 }
 
 impl<'a> Chunked<'a> {
@@ -24,6 +30,8 @@ impl<'a> Chunked<'a> {
             inner: Cursor::new(bytes),
             chunk,
             window: None,
+            failing: 0,
+            reads: 0,
         }
     }
 
@@ -32,10 +40,21 @@ impl<'a> Chunked<'a> {
         self.window = Some(window);
         self
     }
+
+    /// Makes the reads whose bits are set in `failing`, by index modulo 64, fail.
+    pub fn failing(mut self, failing: u64) -> Self {
+        self.failing = failing;
+        self
+    }
 }
 
 impl Read for Chunked<'_> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let read = self.reads;
+        self.reads += 1;
+        if self.failing >> (read % 64) & 1 == 1 {
+            return Err(io::Error::other(format!("read {read} failed on schedule")));
+        }
         let mut len = buf.len().min(self.chunk);
         if let Some(window) = &self.window {
             let pos = self.inner.position();

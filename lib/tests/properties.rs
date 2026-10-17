@@ -462,13 +462,16 @@ fn calls() -> impl Strategy<Value = Vec<Call>> {
     prop::collection::vec(call, 0..40)
 }
 
-/// Checks a decoder over `archive`, whose source returns `chunk` bytes per read, against a
-/// model: the position and limit it is set up with, then moved by `calls`. Each decompression
-/// must return the input from the position up to the limit, as much as fits.
+/// Checks a decoder over `archive`, whose source returns `chunk` bytes per read and fails the
+/// reads `failing` schedules, against a model: the position and limit it is set up with, then
+/// moved by `calls`. Each decompression must return the input from the position up to the limit,
+/// as much as fits, or less when a read fails inside it, or the read's error with the position
+/// unmoved.
 fn check_decoder(
     archive: &Archive,
     tables: &TableSource,
     chunk: usize,
+    failing: u64,
     start: &Start,
     calls: &[Call],
 ) -> Result<(), TestCaseError> {
@@ -479,7 +482,7 @@ fn check_decoder(
 
     let whole = archive.with_seek_table();
     let opts = match tables {
-        TableSource::Archive => DecodeOptions::new(Chunked::new(&whole, chunk)),
+        TableSource::Archive => DecodeOptions::new(Chunked::new(&whole, chunk).failing(failing)),
         TableSource::Detached {
             format,
             chunk: table_chunk,
@@ -489,26 +492,40 @@ fn check_decoder(
                 SeekTable::from_seekable_format(&mut Chunked::new(&bytes, *table_chunk), *format)
                     .unwrap();
             prop_assert_eq!(&parsed, st);
-            DecodeOptions::new(Chunked::new(&archive.frames, chunk)).seek_table(parsed)
+            let source = Chunked::new(&archive.frames, chunk).failing(failing);
+            DecodeOptions::new(source).seek_table(parsed)
         }
     };
-    let opts = start.apply(opts, st);
+    let decoder = start.apply(opts, st).into_decoder();
     let Some((mut offset, mut limit)) = start.range(st) else {
-        prop_assert!(opts.into_decoder().is_err());
+        prop_assert!(decoder.is_err());
         return Ok(());
     };
-    let mut decoder = opts.into_decoder().unwrap();
+    let mut decoder = match decoder {
+        Ok(decoder) => decoder,
+        // A read of the seek table failed on schedule
+        Err(err) => {
+            prop_assert!(err.is_io(), "{}", err);
+            return Ok(());
+        }
+    };
 
     for call in calls {
         match *call {
             Call::Decompress(len) => {
                 let mut buf = vec![0; len];
-                let n = decoder.decompress_with_prefix(&mut buf, prefix).unwrap();
                 let wanted = limit.saturating_sub(offset).min(len as u64) as usize;
-                prop_assert_eq!(n, wanted, "offset {}, limit {}", offset, limit);
-                let at = offset as usize;
-                prop_assert!(buf[..n] == input[at..at + n], "wrong bytes at {}", at);
-                offset += n as u64;
+                match decoder.decompress_with_prefix(&mut buf, prefix) {
+                    Ok(n) => {
+                        // A read that fails inside the call cuts it short, never to nothing
+                        let short = failing != 0 && n > 0 && n < wanted;
+                        prop_assert!(n == wanted || short, "{} of {} at {}", n, wanted, offset);
+                        let at = offset as usize;
+                        prop_assert!(buf[..n] == input[at..at + n], "wrong bytes at {}", at);
+                        offset += n as u64;
+                    }
+                    Err(err) => prop_assert!(failing != 0 && err.is_io(), "{}", err),
+                }
             }
             Call::SetOffset(index) | Call::SetOffsetLimit(index) => {
                 let pos = pick(index, size);
@@ -983,15 +1000,18 @@ proptest! {
         check_reference_reads(&whole, &archive.input, &reads)?;
     }
 
+    /// Through a source that fails some reads, one time in four, the decoder returns the same
+    /// bytes in shorter steps, with the read's error in between and the position unmoved by it.
     #[test]
     fn decoder_behaves_like_a_cursor_over_the_input(
         archive in archive(),
         tables in table_source(),
         chunk in chunk(),
+        failing in prop_oneof![3 => Just(0u64), 1 => any::<u64>()],
         start in start(),
         calls in calls(),
     ) {
-        check_decoder(&archive, &tables, chunk, &start, &calls)?;
+        check_decoder(&archive, &tables, chunk, failing, &start, &calls)?;
     }
 
     /// A read takes no bytes but those of the frames holding its first and its last byte, so a
