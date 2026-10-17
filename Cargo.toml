@@ -21,6 +21,7 @@ zstd-safe = { version = "8.2.0", default-features = false, features = ["std"] }
 
 [workspace.lints.clippy]
 pedantic = { level = "deny", priority = -1 }
+too_many_lines = "allow"
 cast_possible_wrap = "allow"
 cast_possible_truncation = "allow"
 cast-lossless = "allow"

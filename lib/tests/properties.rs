@@ -463,35 +463,6 @@ fn calls() -> impl Strategy<Value = Vec<Call>> {
     prop::collection::vec(call, 0..40)
 }
 
-/// Options for a decoder over `archive`: reading `whole`, the archive with its seek table at
-/// the end, or the frames alone with a detached table, as `tables` says, `chunk` bytes per read,
-/// failing the reads `failing` schedules.
-fn options_over<'a>(
-    archive: &'a Archive,
-    whole: &'a [u8],
-    tables: &TableSource,
-    chunk: usize,
-    failing: u64,
-) -> Result<DecodeOptions<'a, Chunked<'a>>, TestCaseError> {
-    let st = &archive.seek_table;
-    let opts = match tables {
-        TableSource::Archive => DecodeOptions::new(Chunked::new(whole, chunk).failing(failing)),
-        TableSource::Detached {
-            format,
-            chunk: table_chunk,
-        } => {
-            let bytes = serialize(st, *format);
-            let parsed =
-                SeekTable::from_seekable_format(&mut Chunked::new(&bytes, *table_chunk), *format)
-                    .unwrap();
-            prop_assert_eq!(&parsed, st);
-            let source = Chunked::new(&archive.frames, chunk).failing(failing);
-            DecodeOptions::new(source).seek_table(parsed)
-        }
-    };
-    Ok(opts)
-}
-
 /// Checks a decoder over `archive`, whose source returns `chunk` bytes per read and fails the
 /// reads `failing` schedules, against a model: the position and limit it is set up with, then
 /// moved by `calls`. Each decompression must return the input from the position up to the limit,
@@ -511,7 +482,21 @@ fn check_decoder(
     let prefix = archive.prefix.as_deref();
 
     let whole = archive.with_seek_table();
-    let opts = options_over(archive, &whole, tables, chunk, failing)?;
+    let opts = match tables {
+        TableSource::Archive => DecodeOptions::new(Chunked::new(&whole, chunk).failing(failing)),
+        TableSource::Detached {
+            format,
+            chunk: table_chunk,
+        } => {
+            let bytes = serialize(st, *format);
+            let parsed =
+                SeekTable::from_seekable_format(&mut Chunked::new(&bytes, *table_chunk), *format)
+                    .unwrap();
+            prop_assert_eq!(&parsed, st);
+            let source = Chunked::new(&archive.frames, chunk).failing(failing);
+            DecodeOptions::new(source).seek_table(parsed)
+        }
+    };
     let decoder = start.apply(opts, st).into_decoder();
     let Some((mut offset, mut limit)) = start.range(st) else {
         prop_assert!(decoder.is_err());
