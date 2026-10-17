@@ -1,3 +1,4 @@
+// Model-output: Claude Opus 5.5
 //! This crate provides a Rust implementation of the Zstandard Seekable Format, as outlined in
 //! the [specification].
 //!
@@ -47,6 +48,11 @@ pub use seek_table::SeekTable;
 pub use seekable::{BytesWrapper, OffsetFrom, Seekable};
 // Re-export as it's part of the API.
 pub use zstd_safe::CompressionLevel;
+
+/// The version of this crate. Its `+prime.N` build metadata goes up whenever what the encoders
+/// write or what the decoders verify changes, so that a program can record which zeekstd wrote
+/// an archive.
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// The magic number of the seek table integrity field.
 pub const SEEKABLE_MAGIC_NUMBER: u32 = 0x8F92_EAB1;
@@ -310,6 +316,13 @@ mod tests {
     #[cfg(feature = "std")]
     fn cycle_std() {
         test_cycle_std(None);
+    }
+
+    // A merge that takes upstream's version would make this fork's output indistinguishable
+    // from upstream's in what programs record.
+    #[test]
+    fn version_names_the_fork() {
+        assert!(VERSION.contains("+prime."), "{VERSION}");
     }
 
     proptest! {

@@ -42,6 +42,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - `RawEncoder::flush` flushes the compression context into an output buffer without ending the
   frame. A frame ending that `RawEncoder::end_frame` left pending is finished instead
+- `VERSION`, this crate's version, so that a program can record which zeekstd wrote an archive.
+  The version is the upstream release plus `+prime.N`, and N goes up whenever what the encoders
+  write or what the decoders verify changes
 
 The `Error` struct has changed:
 

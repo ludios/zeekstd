@@ -1,6 +1,8 @@
 [package]
 name = "zeekstd"
-version = "0.6.2"
+# The upstream release this fork is based on, plus `+prime.N`. Bump N whenever what the encoders
+# write or what the decoders verify changes; programs record it from `zeekstd::VERSION`.
+version = "0.6.2+prime.1"
 description.workspace = true
 edition.workspace = true
 license.workspace = true
