@@ -322,22 +322,39 @@ fn start() -> impl Strategy<Value = Start> {
     )
 }
 
+/// The values `Start` picks for the frames of a seek table: an offset, a lower frame, an offset
+/// limit and an upper frame, each if set.
+type Picked = (Option<u64>, Option<u32>, Option<u64>, Option<u32>);
+
 impl Start {
-    /// Sets these options on `opts`, for a decoder over the frames of `st`.
-    fn apply<'a, S>(&self, mut opts: DecodeOptions<'a, S>, st: &SeekTable) -> DecodeOptions<'a, S> {
+    /// The option values these picks come to over the frames of `st`.
+    fn resolve(&self, st: &SeekTable) -> Picked {
         let size = st.size_decomp();
         let num_frames = u64::from(st.num_frames());
-        if let Some(index) = self.offset {
-            opts = opts.offset(pick(index, size));
+        let pos = |index: Option<Index>| index.map(|index| pick(index, size));
+        let frame = |index: Option<Index>| index.map(|index| pick(index, num_frames) as u32);
+        (
+            pos(self.offset),
+            frame(self.lower_frame),
+            pos(self.offset_limit),
+            frame(self.upper_frame),
+        )
+    }
+
+    /// Sets these options on `opts`, for a decoder over the frames of `st`.
+    fn apply<'a, S>(&self, mut opts: DecodeOptions<'a, S>, st: &SeekTable) -> DecodeOptions<'a, S> {
+        let (offset, lower_frame, offset_limit, upper_frame) = self.resolve(st);
+        if let Some(pos) = offset {
+            opts = opts.offset(pos);
         }
-        if let Some(index) = self.lower_frame {
-            opts = opts.lower_frame(pick(index, num_frames) as u32);
+        if let Some(frame) = lower_frame {
+            opts = opts.lower_frame(frame);
         }
-        if let Some(index) = self.offset_limit {
-            opts = opts.offset_limit(pick(index, size));
+        if let Some(pos) = offset_limit {
+            opts = opts.offset_limit(pos);
         }
-        if let Some(index) = self.upper_frame {
-            opts = opts.upper_frame(pick(index, num_frames) as u32);
+        if let Some(frame) = upper_frame {
+            opts = opts.upper_frame(frame);
         }
         opts
     }
@@ -345,24 +362,20 @@ impl Start {
     /// The position and limit these options give a decoder over the frames of `st`, `None` if
     /// an option is out of range. A frame overrides a position.
     fn range(&self, st: &SeekTable) -> Option<(u64, u64)> {
+        let (offset, lower_frame, offset_limit, upper_frame) = self.resolve(st);
         let size = st.size_decomp();
-        let num_frames = u64::from(st.num_frames());
         let in_range = |pos: u64| (pos <= size).then_some(pos);
-        let mut offset = Some(0);
-        if let Some(index) = self.offset {
-            offset = in_range(pick(index, size));
-        }
-        if let Some(index) = self.lower_frame {
-            offset = st.frame_start_decomp(pick(index, num_frames) as u32).ok();
-        }
-        let mut limit = Some(size);
-        if let Some(index) = self.offset_limit {
-            limit = in_range(pick(index, size));
-        }
-        if let Some(index) = self.upper_frame {
-            limit = st.frame_end_decomp(pick(index, num_frames) as u32).ok();
-        }
-        offset.zip(limit)
+        let start = match (lower_frame, offset) {
+            (Some(frame), _) => st.frame_start_decomp(frame).ok(),
+            (None, Some(pos)) => in_range(pos),
+            (None, None) => Some(0),
+        };
+        let end = match (upper_frame, offset_limit) {
+            (Some(frame), _) => st.frame_end_decomp(frame).ok(),
+            (None, Some(pos)) => in_range(pos),
+            (None, None) => Some(size),
+        };
+        start.zip(end)
     }
 }
 
@@ -992,19 +1005,22 @@ proptest! {
         let Some((offset, limit)) = start.range(st) else {
             return Ok(());
         };
-        let (window, wanted) = if offset < limit {
-            let first = st.frame_index_decomp(offset);
-            let last = st.frame_index_decomp(limit - 1);
-            let window = st.frame_start_comp(first).unwrap()..st.frame_end_comp(last).unwrap();
-            (window, &archive.input[offset as usize..limit as usize])
-        } else {
-            (0..0, &[][..])
-        };
-        let source = Chunked::new(&archive.frames, chunk).within(window);
+        // The frames holding the first and the last byte wanted, none for an empty read
+        let frames = (offset < limit)
+            .then(|| (st.frame_index_decomp(offset), st.frame_index_decomp(limit - 1)));
+        let window = frames.map_or(0..0, |(first, last)| {
+            st.frame_start_comp(first).unwrap()..st.frame_end_comp(last).unwrap()
+        });
+        let source = Chunked::new(&archive.frames, chunk).within(window.clone());
         let opts = DecodeOptions::new(source).seek_table(st.clone());
         let mut decoder = start.apply(opts, st).into_decoder().unwrap();
         let decoded = decode_all(&mut decoder, buf_len, archive.prefix.as_deref()).unwrap();
+        let wanted = frames.map_or(&[][..], |_| &archive.input[offset as usize..limit as usize]);
         prop_assert!(decoded == wanted, "{}..{}", offset, limit);
+        // A read ending at a frame end takes the whole window, the last trailer included
+        if frames.is_some_and(|(_, last)| st.frame_end_decomp(last).unwrap() == limit) {
+            prop_assert_eq!(decoder.read_compressed(), window.end - window.start);
+        }
     }
 
     #[test]

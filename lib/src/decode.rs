@@ -251,7 +251,8 @@ impl<'a, S: Seekable> Decoder<'a, S> {
     ///
     /// Every frame that gets decompressed to its end is verified, i.e. its checksum if it has
     /// one, and its decompressed size against the seek table. An offset limit inside a frame
-    /// skips the verification of that frame.
+    /// skips the verification of that frame. A frame that the seek table declares empty is read
+    /// and verified only between other frames of the read, not at its offset or at its limit.
     ///
     /// If a `prefix` is passed, it will be referenced at the beginning of every frame.
     /// Referencing a raw content prefix has almost no CPU nor memory cost.
@@ -261,8 +262,11 @@ impl<'a, S: Seekable> Decoder<'a, S> {
     /// If decompression fails, the source ends inside a frame, a frame disagrees with its seek
     /// table entry, or any parameter is invalid. After a failed decompression or disagreeing
     /// frame, every call returns the same error until [`Self::reset`] or a [`Self::set_offset`]
-    /// that cannot continue from the current position. A failed read from the source is retried
-    /// by the next call instead.
+    /// that cannot continue from the current position. A failed read from the source, or one
+    /// that finds it ended, is retried by the next call instead: a call that already placed
+    /// bytes from complete frames in `buf` returns them first. If the read was for the trailer
+    /// of the frame the last of them came from, the call fails and takes them back, so that a
+    /// retry produces them again and no unverified frame passes for a complete one.
     #[allow(clippy::missing_panics_doc)]
     pub fn decompress_with_prefix<'b: 'a>(
         &mut self,
@@ -291,6 +295,7 @@ impl<'a, S: Seekable> Decoder<'a, S> {
             self.in_buf_limit = 0;
         }
 
+        let offset_at_entry = self.offset;
         let mut output_progress = 0;
         // Decompressed end of the frame the context is in, `None` past the last frame
         let mut frame_end = self.seek_table.frame_end_decomp(self.frame_idx).ok();
@@ -299,21 +304,22 @@ impl<'a, S: Seekable> Decoder<'a, S> {
             // the context never gets past it
             assert!(frame_end.is_none_or(|end| self.decomp_pos <= end));
             // Stop once no more output is wanted, unless a frame still has to be consumed here
-            let output_wanted = self.offset < self.offset_limit && output_progress < buf.len();
-            let pending = frame_pending(
-                self.frame_done,
-                frame_end,
-                self.decomp_pos,
-                self.offset_limit,
-            );
+            let limit = self.offset_limit;
+            let output_wanted = self.offset < limit && output_progress < buf.len();
+            let pending = frame_pending(self.frame_done, frame_end, self.decomp_pos, limit);
             if !output_wanted && !pending {
                 break;
             }
 
             if let Err(err) = self.fill_in_buf() {
-                // Bytes already placed in `buf` must be reported, so a failed or empty read is
-                // left for the next call, which retries it and reports its error
-                if output_progress > 0 {
+                // Bytes already placed in `buf` are reported, and the failed or empty read is
+                // left for the next call to retry and report, unless the read was for the
+                // trailer of the frame the last of them came from: unverified, they are taken
+                // back instead, so that a retry produces them again
+                if !self.frame_done && frame_end == Some(self.decomp_pos) {
+                    self.offset = offset_at_entry;
+                    self.reset_dctx();
+                } else if output_progress > 0 {
                     break;
                 }
                 return Err(err);
@@ -489,7 +495,7 @@ impl<S: Seekable> Decoder<'_, S> {
     /// Sets the decompression offset to the beginning of the frame at `index`.
     ///
     /// This has the same effect as calling [`Self::set_offset`] with the decompressed start
-    /// position of the frame at `index`.
+    /// position of the frame at `index`, so an empty frame at `index` is passed over.
     ///
     /// # Errors
     ///
@@ -504,8 +510,9 @@ impl<S: Seekable> Decoder<'_, S> {
     /// Sets the limit for the decompression offset to the end of the frame at `index`.
     ///
     /// This has the same effect as calling [`Self::set_offset_limit`] with the decompressed end
-    /// position of the frame at `index`. The current decompression state will not be reset, it is
-    /// possible to change the upper frame in the middle of a decompression operation.
+    /// position of the frame at `index`, so an empty frame at `index` is not read. The current
+    /// decompression state will not be reset, it is possible to change the upper frame in the
+    /// middle of a decompression operation.
     ///
     /// # Errors
     ///
@@ -554,7 +561,7 @@ impl<S: Seekable> Decoder<'_, S> {
     ///
     /// **Note**: The decoder will immediately stop decompression at the specified limit. The
     /// frame checksum of the last decompressed frame will not be verified, if the limit isn't at
-    /// the end of a frame.
+    /// the end of a frame. A frame that the seek table declares empty at the limit is not read.
     ///
     /// # Errors
     ///
@@ -733,39 +740,54 @@ mod tests {
             .collect()
     }
 
-    /// Compresses `input` into a complete seekable (frames followed by a `Foot` seek table),
-    /// checking that the encoder's progress reports add up to what it wrote.
-    fn encode(input: &[u8], frame_size_policy: Option<FrameSizePolicy>, checksum: bool) -> Vec<u8> {
-        let mut seekable = vec![];
+    /// Compresses each of `pieces` into frames under `policy`, the default one if `None`, and
+    /// ends a frame at each piece's end; an empty piece makes an empty frame. Returns the frames,
+    /// without a seek table, and their seek table.
+    fn frames(
+        pieces: &[&[u8]],
+        policy: Option<FrameSizePolicy>,
+        checksum: bool,
+    ) -> (Vec<u8>, SeekTable) {
         let mut encoder = EncodeOptions::new()
-            .frame_size_policy(frame_size_policy.unwrap_or_default())
+            .frame_size_policy(policy.unwrap_or_default())
             .checksum_flag(checksum)
             .into_raw_encoder()
             .unwrap();
-
-        let mut buf = vec![0; input.len().max(64)];
-
-        let mut in_progress = 0;
-        let mut out_progress = 0;
-        while in_progress < input.len() {
-            let progress = encoder.compress(&input[in_progress..], &mut buf).unwrap();
-            seekable.extend(&buf[..progress.out_progress()]);
-            in_progress += progress.in_progress();
-            out_progress += progress.out_progress();
-        }
-        assert_eq!(in_progress, input.len());
-
-        loop {
-            let prog = encoder.end_frame(&mut buf).unwrap();
-            seekable.extend(&buf[..prog.out_progress()]);
-            out_progress += prog.out_progress();
-            if prog.data_left() == 0 {
-                break;
+        let mut archive = vec![];
+        let mut buf = vec![0; 4096];
+        for piece in pieces {
+            let mut pos = 0;
+            while pos < piece.len() {
+                let prog = encoder.compress(&piece[pos..], &mut buf).unwrap();
+                assert!(
+                    prog.in_progress() + prog.out_progress() > 0,
+                    "compress stalled"
+                );
+                archive.extend(&buf[..prog.out_progress()]);
+                pos += prog.in_progress();
+            }
+            loop {
+                let prog = encoder.end_frame(&mut buf).unwrap();
+                assert!(
+                    prog.out_progress() > 0 || prog.data_left() == 0,
+                    "end_frame stalled"
+                );
+                archive.extend(&buf[..prog.out_progress()]);
+                if prog.data_left() == 0 {
+                    break;
+                }
             }
         }
-        assert_eq!(out_progress, seekable.len());
+        (archive, encoder.into_seek_table())
+    }
 
-        let mut ser = encoder.into_seek_table().into_serializer();
+    /// Compresses `input` into a complete seekable (frames followed by a `Foot` seek table),
+    /// checking that the serializer writes as much as it announces.
+    fn encode(input: &[u8], frame_size_policy: Option<FrameSizePolicy>, checksum: bool) -> Vec<u8> {
+        let (mut seekable, st) = frames(&[input], frame_size_policy, checksum);
+        let frames_len = seekable.len();
+        let mut ser = st.into_serializer();
+        let mut buf = vec![0; 64];
         loop {
             let n = ser.write_into(&mut buf);
             if n == 0 {
@@ -773,8 +795,7 @@ mod tests {
             }
             seekable.extend(&buf[..n]);
         }
-        assert_eq!(out_progress + ser.encoded_len(), seekable.len());
-
+        assert_eq!(frames_len + ser.encoded_len(), seekable.len());
         seekable
     }
 
@@ -1051,33 +1072,6 @@ mod tests {
         );
     }
 
-    /// Compresses each of `pieces` into a frame of its own, checksums on, an empty piece into an
-    /// empty frame. Returns the frames, without a seek table, and their seek table.
-    fn frames(pieces: &[&[u8]]) -> (Vec<u8>, SeekTable) {
-        let mut encoder = EncodeOptions::new()
-            .checksum_flag(true)
-            .into_raw_encoder()
-            .unwrap();
-        let mut archive = vec![];
-        let mut buf = vec![0; 4096];
-        for piece in pieces {
-            let mut pos = 0;
-            while pos < piece.len() {
-                let prog = encoder.compress(&piece[pos..], &mut buf).unwrap();
-                archive.extend(&buf[..prog.out_progress()]);
-                pos += prog.in_progress();
-            }
-            loop {
-                let prog = encoder.end_frame(&mut buf).unwrap();
-                archive.extend(&buf[..prog.out_progress()]);
-                if prog.data_left() == 0 {
-                    break;
-                }
-            }
-        }
-        (archive, encoder.into_seek_table())
-    }
-
     /// A decoder over `src` with `st` as its seek table.
     fn decoder_with<'a>(src: &'a [u8], st: &SeekTable) -> Decoder<'static, BytesWrapper<'a>> {
         DecodeOptions::new(BytesWrapper::new(src))
@@ -1089,7 +1083,7 @@ mod tests {
     #[test]
     fn upper_frame_does_not_enter_a_following_empty_frame() {
         let data = noise(1000);
-        let (archive, st) = frames(&[&data, b""]);
+        let (archive, st) = frames(&[&data, b""], None, true);
         assert_eq!(st.frame_size_decomp(1).unwrap(), 0);
 
         // A source holding only frame 0, as a range fetch of just the frame asked for: the read
@@ -1104,7 +1098,7 @@ mod tests {
     #[test]
     fn empty_frame_inside_the_range_is_consumed_and_verified() {
         let data = noise(2000);
-        let (mut archive, st) = frames(&[&data[..1000], b"", &data[1000..]]);
+        let (mut archive, st) = frames(&[&data[..1000], b"", &data[1000..]], None, true);
         assert_eq!(st.num_frames(), 3);
 
         // Whether or not the output buffer fills up right at the empty frame, a whole read
@@ -1127,7 +1121,7 @@ mod tests {
     #[test]
     fn source_ending_after_reported_bytes_fails_on_the_next_call() {
         let data = noise(2000);
-        let (archive, st) = frames(&[&data[..1000], &data[1000..]]);
+        let (archive, st) = frames(&[&data[..1000], &data[1000..]], None, true);
         let frame0_end = st.frame_end_comp(0).unwrap() as usize;
 
         // The source ends right after frame 0, or inside frame 1
@@ -1144,6 +1138,24 @@ mod tests {
                 result.as_ref().is_err_and(Error::is_unexpected_eof),
                 "{result:?}"
             );
+        }
+    }
+
+    #[test]
+    fn source_ending_inside_a_trailer_fails_the_call() {
+        let data = noise(1000);
+        let (archive, st) = frames(&[&data], None, true);
+        // The source ends two bytes into the frame's checksum, so the frame's bytes fit the
+        // buffer but cannot be verified: the call fails and takes them back, every time
+        let mut decoder = decoder_with(&archive[..archive.len() - 2], &st);
+        let mut buf = vec![0; 4096];
+        for _ in 0..2 {
+            let result = decoder.decompress(&mut buf);
+            assert!(
+                result.as_ref().is_err_and(Error::is_unexpected_eof),
+                "{result:?}"
+            );
+            assert_eq!(decoder.offset(), 0);
         }
     }
 
