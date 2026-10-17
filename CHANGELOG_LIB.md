@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `RawEncoder::compress`, and so `Encoder::compress` after an `end_frame` that failed to write,
+  finishes a pending frame ending before it consumes more input. That input used to go into a zstd
+  frame of its own that the seek table counted as part of the previous one, which made the archive
+  undecodable
+
 ## [7.0.0]
 
 The first version of the ludios fork, which has its own version line from here on. It contains

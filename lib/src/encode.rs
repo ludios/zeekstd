@@ -311,7 +311,8 @@ impl<'a> RawEncoder<'a> {
     /// Call this repetitively to consume the input stream. The returned [`CompressionProgress`]
     /// indicates how many bytes were consumed from `input` and written to `output`. The caller
     /// must check if `input` has been entirely consumed. If not, the caller must make some room
-    /// to receive more compressed data, and then present again remaining input data.
+    /// to receive more compressed data, and then present again remaining input data. A frame
+    /// ending that [`Self::end_frame`] left pending is finished first, consuming no input.
     ///
     /// If a `prefix` is passed, it will be re-applied to every frame, as tables are discarded at
     /// end of frame. Referencing a prefix involves building tables, which is a CPU consuming
@@ -328,7 +329,7 @@ impl<'a> RawEncoder<'a> {
         output: &mut [u8],
         prefix: Option<&'b [u8]>,
     ) -> Result<CompressionProgress> {
-        if self.is_frame_complete() {
+        if self.frame_ending || self.is_frame_complete() {
             let mut out_progress = 0;
             while out_progress < output.len() {
                 let progress = self.end_frame(&mut output[out_progress..])?;
@@ -1067,24 +1068,14 @@ mod tests {
             .collect()
     }
 
-    /// A frame ending that an output buffer cut short must be finished by a following flush, not
-    /// bypassed: the frame would otherwise stay unlogged and merge with the next one.
-    #[test]
+    /// Compresses `input` into a new `RawEncoder` and starts ending the frame in a buffer too small
+    /// to hold the ending. Returns the encoder and the archive written so far.
     #[cfg(feature = "std")]
-    fn flush_finishes_a_pending_frame_ending() {
-        let input = noise();
+    fn encoder_with_a_pending_frame_ending(input: &[u8]) -> (RawEncoder<'static>, Vec<u8>) {
         let mut encoder = RawEncoder::new().unwrap();
         let mut archive = vec![];
-        let mut buf = vec![0; 128 * 1024];
+        compress_all(&mut encoder, input, &mut archive);
 
-        let mut consumed = 0;
-        while consumed < input.len() {
-            let progress = encoder.compress(&input[consumed..], &mut buf).unwrap();
-            archive.extend(&buf[..progress.out_progress()]);
-            consumed += progress.in_progress();
-        }
-
-        // Start the frame ending in a buffer too small to hold it
         let mut tiny = [0u8; 4];
         let progress = encoder.end_frame(&mut tiny).unwrap();
         archive.extend(&tiny[..progress.out_progress()]);
@@ -1093,6 +1084,55 @@ mod tests {
             "the ending should still be pending"
         );
 
+        (encoder, archive)
+    }
+
+    /// Feeds all of `input` to `encoder`, appending the output to `archive`.
+    #[cfg(feature = "std")]
+    fn compress_all(encoder: &mut RawEncoder, input: &[u8], archive: &mut Vec<u8>) {
+        let mut buf = vec![0; 128 * 1024];
+        let mut consumed = 0;
+        while consumed < input.len() {
+            let progress = encoder.compress(&input[consumed..], &mut buf).unwrap();
+            archive.extend(&buf[..progress.out_progress()]);
+            consumed += progress.in_progress();
+        }
+    }
+
+    /// Appends the seek table of `encoder` to `archive`. Returns everything decoded from it.
+    #[cfg(feature = "std")]
+    fn decode_with_seek_table(encoder: RawEncoder, mut archive: Vec<u8>) -> Vec<u8> {
+        let mut buf = vec![0; 1024];
+        let mut ser = encoder.into_seek_table().into_serializer();
+        loop {
+            let n = ser.write_into(&mut buf);
+            if n == 0 {
+                break;
+            }
+            archive.extend(&buf[..n]);
+        }
+
+        let mut decoder = Decoder::new(BytesWrapper::new(&archive)).unwrap();
+        let mut restored = vec![];
+        loop {
+            let n = decoder.decompress(&mut buf).unwrap();
+            if n == 0 {
+                break;
+            }
+            restored.extend(&buf[..n]);
+        }
+        restored
+    }
+
+    /// A frame ending that an output buffer cut short must be finished by a following flush, not
+    /// bypassed: the frame would otherwise stay unlogged and merge with the next one.
+    #[test]
+    #[cfg(feature = "std")]
+    fn flush_finishes_a_pending_frame_ending() {
+        let input = noise();
+        let (mut encoder, mut archive) = encoder_with_a_pending_frame_ending(&input);
+
+        let mut buf = vec![0; 128 * 1024];
         loop {
             let progress = encoder.flush(&mut buf).unwrap();
             archive.extend(&buf[..progress.out_progress()]);
@@ -1106,26 +1146,32 @@ mod tests {
             "the frame was not logged"
         );
 
-        let mut ser = encoder.into_seek_table().into_serializer();
-        loop {
-            let n = ser.write_into(&mut buf);
-            if n == 0 {
-                break;
-            }
-            archive.extend(&buf[..n]);
-        }
+        assert_eq!(decode_with_seek_table(encoder, archive), input);
+    }
 
-        let mut decoder = Decoder::new(BytesWrapper::new(&archive)).unwrap();
-        let mut restored = vec![0; input.len()];
-        let mut pos = 0;
+    /// Input that follows a frame ending an output buffer cut short must go to the next frame,
+    /// after the ending is finished, instead of into a zstd frame the seek table does not know.
+    #[test]
+    #[cfg(feature = "std")]
+    fn compress_finishes_a_pending_frame_ending() {
+        let input = noise();
+        let (mut encoder, mut archive) = encoder_with_a_pending_frame_ending(&input);
+
+        compress_all(&mut encoder, INPUT.as_bytes(), &mut archive);
+        let mut buf = vec![0; 128 * 1024];
         loop {
-            let n = decoder.decompress(&mut restored[pos..]).unwrap();
-            if n == 0 {
+            let progress = encoder.end_frame(&mut buf).unwrap();
+            archive.extend(&buf[..progress.out_progress()]);
+            if progress.data_left() == 0 {
                 break;
             }
-            pos += n;
         }
-        assert_eq!(restored[..pos], input[..]);
+        assert_eq!(encoder.seek_table().num_frames(), 2);
+
+        assert_eq!(
+            decode_with_seek_table(encoder, archive),
+            [&input[..], INPUT.as_bytes()].concat()
+        );
     }
 
     /// Flushing a frame that consumed nothing must leave the compression session untouched, so
