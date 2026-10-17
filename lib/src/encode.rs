@@ -1,5 +1,6 @@
 // Model-output: Claude Fable 5.1
 // Model-output: Claude Opus 5
+// Model-output: Claude Opus 5.5
 #[cfg(feature = "std")]
 use alloc::vec::Vec;
 use zstd_safe::{
@@ -342,12 +343,14 @@ impl<'a> RawEncoder<'a> {
             let limit = input.len().min(self.remaining_frame_size());
             let mut in_buf = InBuffer::around(&input[..limit]);
             let mut out_buf = OutBuffer::around(output);
-            // Reference prefix at the beginning of a frame
-            // TODO: chain when stable
-            if let Some(pref) = prefix {
-                if self.frame_d_size == 0 {
-                    self.cctx.ref_prefix(pref)?;
-                }
+            // Reference prefix at the beginning of a frame. Worker threads of a multithreaded frame
+            // that `reset_frame` abandoned may still read the old one, and zstd-safe refuses a new
+            // prefix until they are done.
+            if let Some(pref) = prefix
+                && self.frame_d_size == 0
+            {
+                self.cctx.wait_for_workers()?;
+                self.cctx.ref_prefix(pref)?;
             }
 
             while in_buf.pos() < limit && out_buf.pos() < out_buf.capacity() {
@@ -1143,6 +1146,28 @@ mod tests {
         encoder
             .compress_with_prefix(INPUT.as_bytes(), Some(INPUT.as_bytes()))
             .expect("referencing a prefix after a flush between frames");
+    }
+
+    /// A frame abandoned while worker threads still compress it must not keep the next frame from
+    /// referencing a prefix. This only tests something under
+    /// `cargo test -p zeekstd --features zstd-safe/zstdmt`; without that, zstd has no workers.
+    #[test]
+    fn prefix_after_an_abandoned_multithreaded_frame() {
+        let mut cctx = CCtx::create();
+        if cctx.set_parameter(CParameter::NbWorkers(1)).is_err() {
+            return;
+        }
+        let mut encoder = EncodeOptions::with_cctx(cctx).into_raw_encoder().unwrap();
+        let mut buf = vec![0; 1024];
+        let prefix = Some(INPUT.as_bytes());
+
+        encoder
+            .compress_with_prefix(INPUT.as_bytes(), &mut buf, prefix)
+            .unwrap();
+        encoder.reset_frame();
+        encoder
+            .compress_with_prefix(INPUT.as_bytes(), &mut buf, prefix)
+            .expect("referencing a prefix after an abandoned frame");
     }
 
     /// Round trips through writers that fail partway, retrying like a caller that still holds its
