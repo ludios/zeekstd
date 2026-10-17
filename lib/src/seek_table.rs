@@ -348,14 +348,55 @@ impl SeekTable {
         Self { entries }
     }
 
-    /// Parses the seek table from a seekable input.
+    /// Parses the seek table in `format` from `src`. Returns it with the position of the seek
+    /// table frame in `src`.
+    fn parse_seekable(src: &mut impl Seekable, format: Format) -> Result<(Self, u64)> {
+        let integrity = src.seek_table_integrity(format)?;
+        let mut parser = Parser::from_bytes(&integrity)?;
+
+        let table_start = match format {
+            Format::Head => src.set_offset(OffsetFrom::Start(0))?,
+            Format::Foot => src.set_offset(OffsetFrom::End(-(parser.seek_table_size as i64)))?,
+        };
+
+        // The entries follow the skippable header, and in Head format also the integrity field
+        // that was read above
+        let prefix_len = match format {
+            Format::Head => SKIPPABLE_HEADER_SIZE + SEEK_TABLE_INTEGRITY_SIZE,
+            Format::Foot => SKIPPABLE_HEADER_SIZE,
+        };
+        // Never larger than the seek table frame, so reads cannot run past it
+        let mut buf = vec![0u8; 8192.min(parser.seek_table_size)];
+        let mut read = 0;
+        while read < prefix_len {
+            let n = src.read(&mut buf[read..])?;
+            if n == 0 {
+                return Err(Error::zstd(ZSTD_ErrorCode::ZSTD_error_corruption_detected));
+            }
+            read += n;
+        }
+        parser.verify_skippable_header(&buf[..SKIPPABLE_HEADER_SIZE])?;
+
+        // Entry bytes that arrived together with the prefix move to the front of the buffer
+        buf.copy_within(prefix_len..read, 0);
+        parser.parse_all(&mut buf, read - prefix_len, |dst| src.read(dst))?;
+        parser.verify()?;
+
+        Ok((parser.into(), table_start))
+    }
+
+    /// Parses the seek table from a seekable archive: frames followed by their seek table in
+    /// [`Foot`] format.
     ///
-    /// This only works if the seek table is in [`Foot`] format.
+    /// The frames fill the archive up to the seek table, so their compressed sizes must add up
+    /// to its position. That rejects any one changed compressed size in the table, which a read
+    /// of the frames in order would not notice. [`Self::from_seekable_format`] parses a table
+    /// without this check, wherever it sits.
     ///
     /// # Errors
     ///
-    /// Fails if the seek table is not in [`Foot`] format, or if verification fails for another
-    /// reason.
+    /// Fails if the seek table is not in [`Foot`] format, if the frames do not add up to its
+    /// position, or if verification fails for another reason.
     ///
     /// [`Foot`]: Format#variant.Foot
     ///
@@ -367,12 +408,13 @@ impl SeekTable {
     /// # let mut seek_table = SeekTable::new();
     /// # seek_table.log_frame(123, 456)?;
     /// # let mut ser = seek_table.into_serializer();
-    /// # let mut buf = [0u8; 32];
-    /// # let n = ser.write_into(&mut buf);
-    /// # let seek_table_bytes = &buf[..n];
+    /// # // The frame's 123 bytes, then the seek table
+    /// # let mut archive = vec![0u8; 123 + 32];
+    /// # let n = ser.write_into(&mut archive[123..]);
+    /// # archive.truncate(123 + n);
     /// use zeekstd::{BytesWrapper, SeekTable};
     ///
-    /// let mut wrapper = BytesWrapper::new(seek_table_bytes);
+    /// let mut wrapper = BytesWrapper::new(&archive);
     /// let seek_table = SeekTable::from_seekable(&mut wrapper)?;
     /// # Ok::<(), zeekstd::Error>(())
     /// ```
@@ -391,10 +433,17 @@ impl SeekTable {
     /// # Ok::<(), zeekstd::Error>(())
     /// ```
     pub fn from_seekable(src: &mut impl Seekable) -> Result<Self> {
-        Self::from_seekable_format(src, Format::Foot)
+        let (seek_table, table_start) = Self::parse_seekable(src, Format::Foot)?;
+        if seek_table.size_comp() != table_start {
+            return Err(Error::zstd(ZSTD_ErrorCode::ZSTD_error_corruption_detected));
+        }
+        Ok(seek_table)
     }
 
     /// Parses the seek table from a seekable input, expecting the given `format`.
+    ///
+    /// The table may sit anywhere, e.g. alone in a file of its own: unlike
+    /// [`Self::from_seekable`], this does not check it against the frames.
     ///
     /// # Errors
     ///
@@ -432,38 +481,7 @@ impl SeekTable {
     /// # Ok::<(), zeekstd::Error>(())
     /// ```
     pub fn from_seekable_format(src: &mut impl Seekable, format: Format) -> Result<Self> {
-        let integrity = src.seek_table_integrity(format)?;
-        let mut parser = Parser::from_bytes(&integrity)?;
-
-        match format {
-            Format::Head => src.set_offset(OffsetFrom::Start(0))?,
-            Format::Foot => src.set_offset(OffsetFrom::End(-(parser.seek_table_size as i64)))?,
-        };
-
-        // The entries follow the skippable header, and in Head format also the integrity field
-        // that was read above
-        let prefix_len = match format {
-            Format::Head => SKIPPABLE_HEADER_SIZE + SEEK_TABLE_INTEGRITY_SIZE,
-            Format::Foot => SKIPPABLE_HEADER_SIZE,
-        };
-        // Never larger than the seek table frame, so reads cannot run past it
-        let mut buf = vec![0u8; 8192.min(parser.seek_table_size)];
-        let mut read = 0;
-        while read < prefix_len {
-            let n = src.read(&mut buf[read..])?;
-            if n == 0 {
-                return Err(Error::zstd(ZSTD_ErrorCode::ZSTD_error_corruption_detected));
-            }
-            read += n;
-        }
-        parser.verify_skippable_header(&buf[..SKIPPABLE_HEADER_SIZE])?;
-
-        // Entry bytes that arrived together with the prefix move to the front of the buffer
-        buf.copy_within(prefix_len..read, 0);
-        parser.parse_all(&mut buf, read - prefix_len, |dst| src.read(dst))?;
-        parser.verify()?;
-
-        Ok(parser.into())
+        Self::parse_seekable(src, format).map(|(seek_table, _)| seek_table)
     }
 
     /// Reads and parses a seek table from `reader`.
@@ -1240,7 +1258,7 @@ mod tests {
         assert_eq!(n, 0);
 
         let mut wrapper = BytesWrapper::new(&buf);
-        let st = SeekTable::from_seekable(&mut wrapper).unwrap();
+        let st = SeekTable::from_seekable_format(&mut wrapper, Format::Foot).unwrap();
         assert_eq!(st.num_frames(), num_frames);
 
         for i in 1..=num_frames {
@@ -1308,6 +1326,33 @@ mod tests {
                     assert_eq!(parsed, st);
                 }
             }
+        }
+    }
+
+    #[test]
+    fn from_seekable_wants_the_table_right_after_its_frames() {
+        let st = seek_table(2);
+        let mut ser = st.clone().into_serializer();
+        let mut table = vec![0; ser.encoded_len()];
+        assert_eq!(ser.write_into(&mut table), table.len());
+        let frames_len = st.size_comp() as usize;
+        for filler in [frames_len - 1, frames_len, frames_len + 1] {
+            let archive = [&vec![0; filler][..], &table].concat();
+            let parsed = SeekTable::from_seekable(&mut BytesWrapper::new(&archive));
+            if filler == frames_len {
+                assert_eq!(parsed.unwrap(), st);
+            } else {
+                assert!(
+                    parsed.is_err(),
+                    "{filler} bytes before the table were accepted"
+                );
+            }
+            // Behind anything, the table itself still parses
+            let mut src = BytesWrapper::new(&archive);
+            assert_eq!(
+                SeekTable::from_seekable_format(&mut src, Format::Foot).unwrap(),
+                st
+            );
         }
     }
 

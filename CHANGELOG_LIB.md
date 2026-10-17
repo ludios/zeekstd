@@ -7,6 +7,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- `SeekTable::from_seekable` requires the frames' compressed sizes to add up to the seek table's
+  position in the source, as they do in an archive, so that a changed compressed-size entry is
+  rejected when the archive is opened rather than when a read reaches the frame, if ever. A seek
+  table on its own is still read by `SeekTable::from_seekable_format`
+
 ### Removed
 
 - zstd-safe's default features, among them zstd's dictionary builder and its decoders of pre-1.0

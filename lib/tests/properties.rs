@@ -1158,7 +1158,8 @@ proptest! {
     }
 
     /// Serialization does not depend on the buffer sizes, and parsing gets back the table from
-    /// sources that return few bytes per read and hold other data next to the table.
+    /// sources that return few bytes per read and hold other data next to the table. An archive
+    /// is read only when that data is as long as the frames the table lists.
     #[test]
     fn seek_tables_round_trip(
         sizes in frame_sizes(),
@@ -1180,6 +1181,14 @@ proptest! {
                 Format::Foot => [&other[..], &bytes].concat(),
             };
             prop_assert_eq!(&parse(&beside).unwrap(), &st);
+            if let Format::Foot = format {
+                let archive = SeekTable::from_seekable(&mut Chunked::new(&beside, chunk));
+                if other.len() as u64 == st.size_comp() {
+                    prop_assert_eq!(&archive.unwrap(), &st);
+                } else {
+                    prop_assert!(archive.is_err());
+                }
+            }
         }
 
         let head = [&serialize(&st, Format::Head)[..], &other].concat();
@@ -1226,7 +1235,8 @@ proptest! {
         prop_assert_eq!(log.write_seek_table(&mut out).unwrap(), 0);
         let written = out.pos();
         theirs.truncate(written);
-        let parsed = SeekTable::from_seekable(&mut BytesWrapper::new(&theirs)).unwrap();
+        let mut theirs = BytesWrapper::new(&theirs);
+        let parsed = SeekTable::from_seekable_format(&mut theirs, Format::Foot).unwrap();
         prop_assert_eq!(&parsed, &st);
     }
 
