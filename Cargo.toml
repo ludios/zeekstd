@@ -1,3 +1,5 @@
+# Model-output: Claude Opus 5.5
+
 [workspace]
 resolver = "2"
 members = ["cli", "lib", "fuzz"]
@@ -13,7 +15,9 @@ keywords = ["zstd", "zstandard", "compression", "zstd-seekable-format"]
 categories = ["compression"]
 
 [workspace.dependencies]
-zstd-safe = { version = "8.2.0", features = ["std"] }
+# Without the defaults: zeekstd needs neither the dictionary builder nor the decoders of pre-1.0
+# zstd frames, which no seekable archive contains.
+zstd-safe = { version = "8.2.0", default-features = false, features = ["std"] }
 
 [workspace.lints.clippy]
 pedantic = { level = "deny", priority = -1 }

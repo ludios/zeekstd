@@ -7,6 +7,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Removed
+
+- zstd-safe's default features, among them zstd's dictionary builder and its decoders of pre-1.0
+  frame formats. `Decoder` used to decompress a frame in the formats of zstd 0.4 to 0.7; it now
+  rejects it, unless another crate in the build turns the zstd-safe or zstd `legacy` feature on
+
 ### Fixed
 
 - `RawEncoder::compress`, and so `Encoder::compress` after an `end_frame` that failed to write,
